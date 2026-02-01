@@ -18,7 +18,7 @@ const cache = globalForSunoApi.sunoApiCache || new Map<string, SunoApi>();
 globalForSunoApi.sunoApiCache = cache;
 
 const logger = pino();
-export const DEFAULT_MODEL = 'chirp-v3-5';
+export const DEFAULT_MODEL = 'chirp-crow'; // Suno v5 model
 
 export interface AudioInfo {
   id: string; // Unique identifier for the audio
@@ -323,15 +323,119 @@ class SunoApi {
     logger.info('Triggering the CAPTCHA');
     try {
       await page.getByLabel('Close').click({ timeout: 2000 }); // close all popups
-      // await this.click(page, { x: 318, y: 13 });
     } catch(e) {}
 
-    const textarea = page.locator('.custom-textarea');
-    await this.click(textarea);
-    await textarea.pressSequentially('Lorem ipsum', { delay: 80 });
+    // Wait a bit for the page to fully render
+    await page.waitForTimeout(2000);
 
-    const button = page.locator('button[aria-label="Create"]').locator('div.flex');
-    this.click(button);
+    // First, click on "Custom" mode toggle/button
+    logger.info('Switching to Custom mode...');
+    const customModeSelectors = [
+      'button:has-text("Custom")',
+      '[data-testid*="custom"]',
+      'label:has-text("Custom")',
+      'span:has-text("Custom")',
+      '[role="tab"]:has-text("Custom")',
+      'input[value="custom"]',
+      '[class*="custom"]',
+    ];
+
+    let customModeClicked = false;
+    for (const selector of customModeSelectors) {
+      try {
+        const el = page.locator(selector).first();
+        await el.waitFor({ timeout: 2000 });
+        await this.click(el);
+        customModeClicked = true;
+        logger.info(`Clicked Custom mode with selector: ${selector}`);
+        await page.waitForTimeout(1000); // Wait for mode switch
+        break;
+      } catch(e) {
+        // Continue to next selector
+      }
+    }
+
+    if (!customModeClicked) {
+      logger.info('Could not find Custom mode button, continuing anyway...');
+    }
+
+    // Wait for Custom mode UI to load
+    await page.waitForTimeout(1000);
+
+    logger.info('Looking for input elements...');
+
+    // Try multiple selectors for input field
+    const inputSelectors = [
+      'textarea',
+      '[contenteditable="true"]',
+      'input[type="text"]',
+      '[data-testid*="input"]',
+      '[class*="input"]',
+      '[class*="textarea"]',
+      '[placeholder*="lyric"]',
+      '[placeholder*="Lyric"]',
+      '[placeholder*="song"]',
+      '[placeholder*="write"]',
+    ];
+
+    let inputElement = null;
+    for (const selector of inputSelectors) {
+      try {
+        const el = page.locator(selector).first();
+        await el.waitFor({ timeout: 2000 });
+        inputElement = el;
+        logger.info(`Found input with selector: ${selector}`);
+        break;
+      } catch(e) {
+        // Continue to next selector
+      }
+    }
+
+    if (inputElement) {
+      await this.click(inputElement);
+      await inputElement.pressSequentially('Lorem ipsum dolor sit amet', { delay: 80 });
+    } else {
+      logger.info('No input element found, trying to click Create button directly');
+    }
+
+    // Try multiple selectors for Create button
+    const buttonSelectors = [
+      'button:has-text("Create")',
+      'button:has-text("create")',
+      'button:has-text("Generate")',
+      'button:has-text("generate")',
+      '[aria-label*="Create"]',
+      '[aria-label*="create"]',
+      '[data-testid*="create"]',
+      'button[type="submit"]',
+    ];
+
+    let button = null;
+    for (const selector of buttonSelectors) {
+      try {
+        const el = page.locator(selector).first();
+        await el.waitFor({ timeout: 2000 });
+        button = el;
+        logger.info(`Found button with selector: ${selector}`);
+        break;
+      } catch(e) {
+        // Continue to next selector
+      }
+    }
+
+    if (button) {
+      await this.click(button);
+    } else {
+      // Last resort: find any visible button and log all buttons
+      logger.info('No Create button found with known selectors. Looking for any button...');
+      const allButtons = await page.locator('button').all();
+      logger.info(`Found ${allButtons.length} buttons on page`);
+      for (let i = 0; i < Math.min(allButtons.length, 5); i++) {
+        const text = await allButtons[i].textContent();
+        logger.info(`Button ${i}: ${text}`);
+      }
+      throw new Error('Could not find Create button. Check server logs for available buttons.');
+    }
 
     const controller = new AbortController();
     new Promise<void>(async (resolve, reject) => {
