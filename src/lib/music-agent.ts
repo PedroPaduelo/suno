@@ -486,13 +486,24 @@ async function handleToolCall(
         title?: string;
       };
 
+      // Convert "mm:ss" format to seconds
+      let continueAtSeconds = 0;
+      if (continue_at) {
+        const parts = continue_at.split(':');
+        if (parts.length === 2) {
+          continueAtSeconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        } else {
+          continueAtSeconds = parseInt(continue_at) || 0;
+        }
+      }
+
       const audios = await api.extendAudio(
         audio_id,
         prompt,
-        continue_at,
-        tags,
-        undefined, // negative_tags
-        title,
+        continueAtSeconds,
+        tags || '',
+        '', // negative_tags
+        title || '',
         undefined, // model
         false // wait_audio
       );
