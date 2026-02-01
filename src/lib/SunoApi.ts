@@ -363,44 +363,41 @@ class SunoApi {
     logger.info('Waiting for page to stabilize...');
     await page.waitForTimeout(3000);
 
-    logger.info('Filling in required fields using stable selectors...');
+    logger.info('Filling fields using real keyboard simulation...');
 
-    // Helper function to fill textarea and trigger React events
-    const fillTextareaWithEvents = async (textarea: Locator, value: string) => {
-      await textarea.click();
-      await textarea.fill(''); // Clear first
-      // Use type() to simulate real typing which triggers React events
-      await textarea.type(value, { delay: 5 });
-      // Also dispatch input event to ensure React state updates
-      await textarea.evaluate((el: HTMLTextAreaElement, val: string) => {
-        el.value = val;
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-      }, value);
-    };
+    // IMPORTANT: React detects real keyboard input, not programmatic value changes
+    // We must use page.type() which simulates actual keystrokes character by character
 
-    // Fill Lyrics textarea - uses stable placeholder that doesn't change
+    // Fill Lyrics textarea with real typing
     try {
       const lyricsTextarea = page.locator('textarea[placeholder*="lyrics"]').first();
       await lyricsTextarea.waitFor({ state: 'visible', timeout: 5000 });
-      await fillTextareaWithEvents(lyricsTextarea, '[Verse]\nTest lyrics for CAPTCHA trigger\n\n[Chorus]\nLa la la testing');
-      logger.info('Filled lyrics textarea');
+      await lyricsTextarea.click();
+      // Clear any existing content first
+      await lyricsTextarea.press('Control+a');
+      await lyricsTextarea.press('Backspace');
+      // Type character by character - this is what makes React detect the input!
+      await page.keyboard.type('[Verse]\nTest lyrics for CAPTCHA\n\n[Chorus]\nLa la la', { delay: 5 });
+      logger.info('Filled lyrics textarea with keyboard simulation');
     } catch(e: any) {
       logger.info(`Error filling lyrics: ${e.message}`);
     }
 
     await page.waitForTimeout(500);
 
-    // Fill Styles textarea - it's the second visible textarea (placeholder changes dynamically)
+    // Fill Styles textarea with real typing
     try {
       const allTextareas = await page.locator('textarea:visible').all();
       logger.info(`Found ${allTextareas.length} visible textareas`);
 
       for (const textarea of allTextareas) {
         const placeholder = await textarea.getAttribute('placeholder') || '';
-        // Skip the lyrics textarea
+        // Skip the lyrics textarea (check for both possible placeholders)
         if (!placeholder.toLowerCase().includes('lyrics') && !placeholder.toLowerCase().includes('prompt')) {
-          await fillTextareaWithEvents(textarea, 'Pop, upbeat, electronic, 120 BPM');
+          await textarea.click();
+          await textarea.press('Control+a');
+          await textarea.press('Backspace');
+          await page.keyboard.type('Pop, electronic, upbeat, 120 BPM', { delay: 5 });
           logger.info(`Filled styles textarea (placeholder: ${placeholder.substring(0, 30)}...)`);
           break;
         }
@@ -409,22 +406,25 @@ class SunoApi {
       logger.info(`Error filling styles: ${e.message}`);
     }
 
-    await page.waitForTimeout(1000); // Wait longer for React to process
+    await page.waitForTimeout(500);
 
-    // Fill Song Title - uses stable placeholder
+    // Fill Song Title with real typing (optional field)
     try {
       const titleInput = page.locator('input[placeholder*="Song Title"]').first();
       const isVisible = await titleInput.isVisible();
       if (isVisible) {
         await titleInput.click();
-        await titleInput.type('Test Song', { delay: 10 });
-        logger.info('Filled title input');
+        await titleInput.press('Control+a');
+        await titleInput.press('Backspace');
+        await page.keyboard.type('Test Song', { delay: 10 });
+        logger.info('Filled title input with keyboard simulation');
       }
     } catch(e: any) {
       logger.info(`Error filling title: ${e.message}`);
     }
 
-    await page.waitForTimeout(500);
+    // Wait for React to process all input
+    await page.waitForTimeout(1000);
 
     // Find Create button using aria-label
     logger.info('Looking for Create button...');
