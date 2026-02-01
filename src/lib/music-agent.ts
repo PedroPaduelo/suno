@@ -89,7 +89,7 @@ async function callClaude(messages: Array<{ role: string; content: unknown }>): 
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-opus-4-5-20251101',
       max_tokens: 4096,
       system: SYSTEM_PROMPT,
       tools,
