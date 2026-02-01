@@ -1,86 +1,482 @@
+/* AETHER Design System 2026 */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ========================================
+   CSS Variables - Design Tokens
+   ======================================== */
+
 :root {
-  --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 17, 17, 17;
-  --background-end-rgb: 0, 0, 0;
+  /* Primary Colors */
+  --color-primary: #6D28D9;
+  --color-primary-light: #A78BFA;
+  --color-secondary: #A78BFA;
+  --color-accent: #22D3EE;
+  --color-pink: #EC4899;
+
+  /* Background Colors */
+  --color-bg: #0A0A0F;
+  --color-surface: #111118;
+  --color-surface-elevated: #1A1A24;
+  --color-surface-hover: #252532;
+
+  /* Text Colors */
+  --color-text-primary: #F1F5F9;
+  --color-text-muted: #94A3B8;
+  --color-text-subtle: #64748B;
+
+  /* Semantic Colors */
+  --color-success: #10B981;
+  --color-error: #EF4444;
+  --color-warning: #F59E0B;
+
+  /* Glassmorphism */
+  --glass-bg: rgba(17, 17, 24, 0.8);
+  --glass-bg-light: rgba(26, 26, 36, 0.9);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-border-hover: rgba(255, 255, 255, 0.2);
+  --glass-blur: 20px;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #6D28D9, #EC4899);
+  --gradient-accent: linear-gradient(135deg, #22D3EE, #6D28D9);
+  --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+  --gradient-surface: linear-gradient(180deg, rgba(26,26,36,0.5) 0%, rgba(17,17,24,0.8) 100%);
+
+  /* Shadows */
+  --shadow-glow-primary: 0 0 30px rgba(109, 40, 217, 0.4);
+  --shadow-glow-accent: 0 0 30px rgba(34, 211, 238, 0.4);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.3);
+
+  /* Spacing */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
 }
 
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      rgb(var(--background-start-rgb)),
-      rgb(var(--background-end-rgb))
-    );
-  min-height: 100vh;
-}
+/* ========================================
+   Base Styles
+   ======================================== */
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+@layer base {
+  * {
+    @apply border-white/10;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-aether-bg text-slate-100 font-sans;
+    background-image:
+      radial-gradient(at 0% 0%, rgba(109, 40, 217, 0.15) 0%, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.1) 0%, transparent 50%),
+      radial-gradient(at 50% 100%, rgba(34, 211, 238, 0.08) 0%, transparent 50%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  ::selection {
+    @apply bg-primary/40 text-white;
   }
 }
 
-/* Custom scrollbar - Dark theme */
+/* ========================================
+   Glassmorphism Components
+   ======================================== */
+
+@layer components {
+  /* Base Glass */
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+  }
+
+  .glass-light {
+    background: var(--glass-bg-light);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+  }
+
+  .glass-card {
+    @apply glass rounded-2xl p-6 transition-all duration-300;
+  }
+
+  .glass-card-hover {
+    @apply glass-card;
+  }
+
+  .glass-card-hover:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 20px 40px -12px rgba(109, 40, 217, 0.3);
+  }
+
+  /* Glass Input */
+  .glass-input {
+    @apply glass rounded-xl px-4 py-3 text-slate-100 placeholder:text-slate-500
+           focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20
+           transition-all duration-200;
+  }
+
+  .glass-input:focus {
+    box-shadow: 0 0 20px rgba(109, 40, 217, 0.2);
+  }
+
+  /* Glass Button */
+  .glass-button {
+    @apply glass rounded-xl px-4 py-2 font-medium text-slate-100
+           hover:bg-white/10 hover:border-white/20
+           active:scale-[0.98] transition-all duration-200;
+  }
+}
+
+/* ========================================
+   Button Styles
+   ======================================== */
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-3 rounded-xl font-medium text-white
+           bg-gradient-to-r from-primary to-pink-500
+           hover:shadow-glow-primary hover:scale-[1.02]
+           active:scale-[0.98] transition-all duration-200;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 rounded-xl font-medium text-slate-100
+           bg-surface-elevated border border-white/10
+           hover:bg-surface-hover hover:border-white/20 hover:scale-[1.02]
+           active:scale-[0.98] transition-all duration-200;
+  }
+
+  .btn-accent {
+    @apply px-6 py-3 rounded-xl font-medium text-aether-bg
+           bg-gradient-to-r from-accent to-cyan-400
+           hover:shadow-glow-accent hover:scale-[1.02]
+           active:scale-[0.98] transition-all duration-200;
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 rounded-xl font-medium text-slate-300
+           hover:bg-white/5 hover:text-white
+           active:scale-[0.98] transition-all duration-200;
+  }
+
+  .btn-icon {
+    @apply p-2 rounded-xl text-slate-400
+           hover:bg-white/5 hover:text-white
+           active:scale-[0.95] transition-all duration-200;
+  }
+}
+
+/* ========================================
+   Glow Effects
+   ======================================== */
+
+@layer components {
+  .glow-primary {
+    box-shadow: 0 0 30px rgba(109, 40, 217, 0.4);
+  }
+
+  .glow-primary-lg {
+    box-shadow: 0 0 50px rgba(109, 40, 217, 0.5);
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 30px rgba(34, 211, 238, 0.4);
+  }
+
+  .glow-pink {
+    box-shadow: 0 0 30px rgba(236, 72, 153, 0.4);
+  }
+
+  .glow-text {
+    text-shadow: 0 0 30px rgba(109, 40, 217, 0.5);
+  }
+}
+
+/* ========================================
+   Animations
+   ======================================== */
+
+@layer utilities {
+  /* Float Animation */
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* Pulse Glow */
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* Shimmer Effect */
+  .animate-shimmer {
+    animation: shimmer 2s linear infinite;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    background-size: 1000px 100%;
+  }
+
+  /* Gradient Animation */
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradientShift 3s ease infinite;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(109, 40, 217, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(109, 40, 217, 0.6); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes wave {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.5); }
+}
+
+@keyframes typing {
+  0%, 60%, 100% { opacity: 0; }
+  30% { opacity: 1; }
+}
+
+/* ========================================
+   Micro-interactions
+   ======================================== */
+
+@layer components {
+  .btn-hover {
+    @apply transition-all duration-200;
+  }
+
+  .btn-hover:hover {
+    transform: scale(1.02);
+  }
+
+  .btn-hover:active {
+    transform: scale(0.98);
+  }
+
+  .card-hover {
+    @apply transition-all duration-300;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-4px);
+  }
+
+  .link-hover {
+    @apply transition-colors duration-200;
+  }
+
+  .link-hover:hover {
+    @apply text-primary;
+  }
+}
+
+/* ========================================
+   Scrollbar Styles
+   ======================================== */
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #1f1f1f;
-  border-radius: 4px;
+  background: var(--color-surface);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #444;
-  border-radius: 4px;
+  background: var(--color-primary);
+  border-radius: 3px;
+  transition: background 0.2s;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: var(--color-primary-light);
 }
 
-/* Audio range slider - Dark theme */
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-primary) var(--color-surface);
+}
+
+/* ========================================
+   Range Slider Styles
+   ======================================== */
+
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #a855f7;
   cursor: pointer;
-  margin-top: -4px;
 }
 
 input[type="range"]::-webkit-slider-runnable-track {
   width: 100%;
   height: 4px;
-  background: #374151;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
   border-radius: 2px;
+  opacity: 0.3;
 }
 
-/* Dark card styles */
-.dark-card {
-  background: rgba(30, 30, 30, 0.8);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  cursor: pointer;
+  margin-top: -5px;
+  box-shadow: 0 0 10px rgba(109, 40, 217, 0.5);
+  transition: all 0.2s;
 }
 
-/* Glow effects */
-.glow-purple {
-  box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 20px rgba(109, 40, 217, 0.7);
 }
 
-.glow-blue {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+input[type="range"]::-moz-range-track {
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  border-radius: 2px;
+  opacity: 0.3;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(109, 40, 217, 0.5);
+}
+
+/* ========================================
+   Audio Waveform Bars
+   ======================================== */
+
+.waveform-bar {
+  @apply bg-gradient-to-t from-primary to-accent rounded-full;
+  animation: wave 1.5s ease-in-out infinite;
+}
+
+.waveform-bar:nth-child(1) { animation-delay: 0s; }
+.waveform-bar:nth-child(2) { animation-delay: 0.1s; }
+.waveform-bar:nth-child(3) { animation-delay: 0.2s; }
+.waveform-bar:nth-child(4) { animation-delay: 0.3s; }
+.waveform-bar:nth-child(5) { animation-delay: 0.4s; }
+.waveform-bar:nth-child(6) { animation-delay: 0.5s; }
+.waveform-bar:nth-child(7) { animation-delay: 0.6s; }
+
+/* ========================================
+   Typing Indicator
+   ======================================== */
+
+.typing-dot {
+  @apply w-2 h-2 rounded-full bg-primary;
+  animation: typing 1.4s infinite;
+}
+
+.typing-dot:nth-child(1) { animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* ========================================
+   Utility Classes
+   ======================================== */
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-pink-500 to-accent;
+  }
+
+  .text-gradient-primary {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-pink-500;
+  }
+
+  .text-gradient-accent {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent to-primary;
+  }
+
+  .border-gradient {
+    border-image: linear-gradient(135deg, var(--color-primary), var(--color-accent)) 1;
+  }
+
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  }
+
+  .mask-fade-bottom {
+    mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  }
+}
+
+/* ========================================
+   Focus States (Accessibility)
+   ======================================== */
+
+@layer base {
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary/50 ring-offset-2 ring-offset-aether-bg;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply outline-none ring-2 ring-primary/50;
+  }
+}
+
+/* ========================================
+   Print Styles
+   ======================================== */
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .glass,
+  .glass-card {
+    background: white !important;
+    border: 1px solid #ccc !important;
+  }
 }

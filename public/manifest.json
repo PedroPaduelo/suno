@@ -1,0 +1,17 @@
+{
+  "name": "AETHER - AI Music Generation",
+  "short_name": "AETHER",
+  "description": "Create incredible music with AI. AETHER is the next generation of AI-powered music creation.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0F",
+  "theme_color": "#6D28D9",
+  "icons": [
+    {
+      "src": "/aether-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

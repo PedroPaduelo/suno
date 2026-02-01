@@ -1,0 +1,52 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6D28D9"/>
+      <stop offset="50%" stop-color="#A78BFA"/>
+      <stop offset="100%" stop-color="#EC4899"/>
+    </linearGradient>
+    <linearGradient id="waveGradient" x1="100" y1="400" x2="400" y2="150" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#22D3EE"/>
+      <stop offset="100%" stop-color="white"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background circle with gradient -->
+  <circle cx="256" cy="256" r="240" fill="url(#bgGradient)"/>
+
+  <!-- Inner shadow/glow -->
+  <circle cx="256" cy="256" r="200" fill="rgba(0,0,0,0.2)"/>
+
+  <!-- Stylized "A" formed by sound waves -->
+  <!-- Central peak line -->
+  <path d="M256 100 L256 400" stroke="white" stroke-width="20" stroke-linecap="round" opacity="0.3"/>
+
+  <!-- Left sound wave - main "A" stroke -->
+  <path d="M130 340 C130 340 160 256 200 256 C240 256 256 160 256 160"
+        stroke="white" stroke-width="28" stroke-linecap="round" fill="none" filter="url(#glow)"/>
+
+  <!-- Right sound wave - main "A" stroke -->
+  <path d="M382 340 C382 340 352 256 312 256 C272 256 256 160 256 160"
+        stroke="white" stroke-width="28" stroke-linecap="round" fill="none" filter="url(#glow)"/>
+
+  <!-- Crossbar of "A" -->
+  <path d="M170 290 L342 290" stroke="white" stroke-width="20" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- Outer wave - left -->
+  <path d="M90 380 C90 380 110 300 150 300"
+        stroke="url(#waveGradient)" stroke-width="16" stroke-linecap="round" fill="none" opacity="0.7"/>
+
+  <!-- Outer wave - right -->
+  <path d="M422 380 C422 380 402 300 362 300"
+        stroke="url(#waveGradient)" stroke-width="16" stroke-linecap="round" fill="none" opacity="0.7"/>
+
+  <!-- Accent dot at peak -->
+  <circle cx="256" cy="130" r="20" fill="url(#waveGradient)"/>
+</svg>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import AudioPlayer from './AudioPlayer';
 
@@ -23,36 +24,39 @@ interface MusicCardProps {
 }
 
 export default function MusicCard({ music, onDelete }: MusicCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [showLyrics, setShowLyrics] = useState(false);
+
   const getStatusBadge = () => {
     switch (music.status) {
       case 'complete':
         return (
-          <span className="px-2 py-1 text-xs bg-green-900/80 text-green-300 rounded-full border border-green-700">
-            Pronto
+          <span className="px-2.5 py-1 text-xs font-medium bg-emerald-500/20 text-emerald-400 rounded-full border border-emerald-500/30 backdrop-blur-sm">
+            Ready
           </span>
         );
       case 'streaming':
         return (
-          <span className="px-2 py-1 text-xs bg-blue-900/80 text-blue-300 rounded-full animate-pulse border border-blue-700">
-            Processando...
+          <span className="px-2.5 py-1 text-xs font-medium bg-accent/20 text-accent rounded-full border border-accent/30 backdrop-blur-sm animate-pulse">
+            Processing...
           </span>
         );
       case 'pending':
       case 'submitted':
         return (
-          <span className="px-2 py-1 text-xs bg-yellow-900/80 text-yellow-300 rounded-full animate-pulse border border-yellow-700">
-            Gerando...
+          <span className="px-2.5 py-1 text-xs font-medium bg-amber-500/20 text-amber-400 rounded-full border border-amber-500/30 backdrop-blur-sm animate-pulse">
+            Generating...
           </span>
         );
       case 'error':
         return (
-          <span className="px-2 py-1 text-xs bg-red-900/80 text-red-300 rounded-full border border-red-700">
-            Erro
+          <span className="px-2.5 py-1 text-xs font-medium bg-red-500/20 text-red-400 rounded-full border border-red-500/30 backdrop-blur-sm">
+            Error
           </span>
         );
       default:
         return (
-          <span className="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-full border border-gray-700">
+          <span className="px-2.5 py-1 text-xs font-medium bg-slate-500/20 text-slate-400 rounded-full border border-slate-500/30 backdrop-blur-sm">
             {music.status}
           </span>
         );
@@ -69,64 +73,99 @@ export default function MusicCard({ music, onDelete }: MusicCardProps) {
   };
 
   return (
-    <div className="bg-gray-800/50 backdrop-blur rounded-xl border border-gray-700 overflow-hidden hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/10 transition-all">
-      {/* Image */}
-      <div className="relative aspect-square bg-gray-900">
+    <div
+      className="glass-card-hover group relative overflow-hidden"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Image Section */}
+      <div className="relative aspect-square -mx-6 -mt-6 mb-4 overflow-hidden">
         {music.imageUrl ? (
           <Image
             src={music.imageUrl}
             alt={music.title}
             fill
-            className="object-cover"
+            className={`object-cover transition-transform duration-500 ${isHovered ? 'scale-110' : 'scale-100'}`}
             unoptimized
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-4xl bg-gradient-to-br from-purple-900/50 to-pink-900/50">
-            🎵
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/30 via-surface to-pink-500/30">
+            <svg className="w-16 h-16 text-primary/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+            </svg>
           </div>
         )}
-        <div className="absolute top-2 right-2">{getStatusBadge()}</div>
+
+        {/* Overlay gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent" />
+
+        {/* Status badge */}
+        <div className="absolute top-3 right-3">{getStatusBadge()}</div>
+
+        {/* Play overlay on hover */}
+        {music.audioUrl && music.status === 'complete' && isHovered && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 animate-fade-in">
+            <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30">
+              <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Content */}
-      <div className="p-4">
-        <h3 className="font-semibold text-white truncate" title={music.title}>
+      {/* Content Section */}
+      <div className="space-y-3">
+        {/* Title */}
+        <h3 className="font-semibold text-white truncate text-lg group-hover:text-gradient-primary transition-colors" title={music.title}>
           {music.title}
         </h3>
 
+        {/* Tags */}
         {music.tags && (
-          <p className="text-xs text-gray-400 mt-1 truncate" title={music.tags}>
-            {music.tags}
-          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {music.tags.split(',').slice(0, 3).map((tag, i) => (
+              <span key={i} className="px-2 py-0.5 text-xs text-slate-400 bg-surface-elevated rounded-full">
+                {tag.trim()}
+              </span>
+            ))}
+          </div>
         )}
 
         {/* Audio Player */}
         {music.audioUrl && music.status === 'complete' && (
-          <div className="mt-3">
-            <AudioPlayer src={music.audioUrl} />
+          <div className="pt-2">
+            <AudioPlayer src={music.audioUrl} compact />
           </div>
         )}
 
         {/* Actions */}
-        <div className="mt-3 flex gap-2">
+        <div className="flex gap-2 pt-2">
           {music.audioUrl && music.status === 'complete' && (
             <button
               onClick={handleDownload}
-              className="flex-1 px-3 py-2 text-sm bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-500 hover:to-pink-500 transition-all flex items-center justify-center gap-1 shadow-lg shadow-purple-500/20"
+              className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
               Download
             </button>
           )}
+
           {onDelete && (
             <button
               onClick={() => onDelete(music.id)}
-              className="px-3 py-2 text-sm bg-red-900/50 text-red-400 rounded-lg hover:bg-red-800/50 transition-colors border border-red-800"
+              className="p-2.5 rounded-xl text-slate-400 bg-surface-elevated border border-white/10
+                       hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/10
+                       transition-all duration-200"
+              title="Delete"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </button>
           )}
@@ -134,14 +173,25 @@ export default function MusicCard({ music, onDelete }: MusicCardProps) {
 
         {/* Lyrics preview */}
         {music.lyrics && (
-          <details className="mt-3">
-            <summary className="text-xs text-gray-400 cursor-pointer hover:text-purple-400 transition-colors">
-              Ver letra
-            </summary>
-            <p className="mt-2 text-xs text-gray-500 whitespace-pre-wrap max-h-32 overflow-y-auto bg-gray-900/50 p-2 rounded-lg">
-              {music.lyrics}
-            </p>
-          </details>
+          <div className="pt-2 border-t border-white/5">
+            <button
+              onClick={() => setShowLyrics(!showLyrics)}
+              className="flex items-center gap-2 text-xs text-slate-500 hover:text-primary transition-colors"
+            >
+              <svg className={`w-3 h-3 transition-transform ${showLyrics ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              {showLyrics ? 'Hide lyrics' : 'View lyrics'}
+            </button>
+
+            {showLyrics && (
+              <div className="mt-3 p-3 rounded-xl bg-surface-elevated/50 max-h-40 overflow-y-auto animate-fade-in">
+                <p className="text-xs text-slate-400 whitespace-pre-wrap leading-relaxed">
+                  {music.lyrics}
+                </p>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
