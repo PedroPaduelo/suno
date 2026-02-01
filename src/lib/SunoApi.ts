@@ -363,13 +363,13 @@ class SunoApi {
     logger.info('Waiting for page to stabilize...');
     await page.waitForTimeout(3000);
 
-    logger.info('Filling in required fields using specific selectors...');
+    logger.info('Filling in required fields using stable selectors...');
 
-    // Fill Lyrics textarea
+    // Fill Lyrics textarea - uses stable placeholder that doesn't change
     try {
-      const lyricsSelector = 'textarea[placeholder*="Write some lyrics"]';
-      const lyricsTextarea = page.locator(lyricsSelector).first();
-      await lyricsTextarea.waitFor({ timeout: 5000 });
+      const lyricsTextarea = page.locator('textarea[placeholder*="lyrics"]').first();
+      await lyricsTextarea.waitFor({ state: 'visible', timeout: 5000 });
+      await lyricsTextarea.click();
       await lyricsTextarea.fill('[Verse]\nLorem ipsum dolor sit amet\nConsectetur adipiscing elit\nSed do eiusmod tempor\n\n[Chorus]\nUt labore et dolore magna aliqua');
       logger.info('Filled lyrics textarea');
     } catch(e: any) {
@@ -378,39 +378,33 @@ class SunoApi {
 
     await page.waitForTimeout(500);
 
-    // Fill Styles textarea using specific selector that works
+    // Fill Styles textarea - it's the second visible textarea (placeholder changes dynamically)
     try {
-      const stylesSelector = 'div.css-fm20ov.eg9z14i0 > div.css-zq13z6.eg9z14i1 > div.mb-0.pb-0 > textarea';
-      const stylesTextarea = page.locator(stylesSelector).first();
-      await stylesTextarea.waitFor({ timeout: 5000 });
-      await stylesTextarea.fill('Pop, upbeat, electronic, catchy melody');
-      logger.info('Filled styles textarea');
-    } catch(e: any) {
-      logger.info(`Error filling styles with specific selector: ${e.message}`);
-      // Fallback: try to find by placeholder content
-      try {
-        const textareas = await page.locator('textarea').all();
-        for (const textarea of textareas) {
-          const placeholder = await textarea.getAttribute('placeholder') || '';
-          const isVisible = await textarea.isVisible();
-          if (isVisible && (placeholder.includes('drum') || placeholder.includes('soprano') || placeholder.includes('hz') || placeholder.includes('bass') || placeholder.includes('rock') || placeholder.includes('pop'))) {
-            await textarea.fill('Pop, upbeat, electronic, catchy melody');
-            logger.info('Filled styles textarea (fallback)');
-            break;
-          }
+      const allTextareas = await page.locator('textarea:visible').all();
+      logger.info(`Found ${allTextareas.length} visible textareas`);
+
+      for (const textarea of allTextareas) {
+        const placeholder = await textarea.getAttribute('placeholder') || '';
+        // Skip the lyrics textarea
+        if (!placeholder.toLowerCase().includes('lyrics')) {
+          await textarea.click();
+          await textarea.fill('Pop, upbeat, electronic, catchy melody');
+          logger.info(`Filled styles textarea (placeholder: ${placeholder.substring(0, 30)}...)`);
+          break;
         }
-      } catch(e2: any) {
-        logger.info(`Error filling styles (fallback): ${e2.message}`);
       }
+    } catch(e: any) {
+      logger.info(`Error filling styles: ${e.message}`);
     }
 
     await page.waitForTimeout(500);
 
-    // Fill Song Title (optional but let's fill it)
+    // Fill Song Title - uses stable placeholder
     try {
       const titleInput = page.locator('input[placeholder*="Song Title"]').first();
       const isVisible = await titleInput.isVisible();
       if (isVisible) {
+        await titleInput.click();
         await titleInput.fill('Test Song');
         logger.info('Filled title input');
       }
@@ -494,19 +488,30 @@ class SunoApi {
     logger.info('Waiting to see if captcha appears...');
     await waitForRequests(page, controller.signal);
 
-    // Check if hCaptcha iframe exists
+    // Check if hCaptcha iframe exists AND is visible
     const captchaFrame = page.locator('iframe[title*="hCaptcha"]');
-    const frameExists = await captchaFrame.count() > 0;
+    const frameCount = await captchaFrame.count();
+    let frameVisible = false;
 
-    if (!frameExists) {
-      logger.info('No hCaptcha iframe found, captcha not required. Generation should proceed normally.');
+    if (frameCount > 0) {
+      try {
+        frameVisible = await captchaFrame.first().isVisible();
+      } catch(e) {
+        frameVisible = false;
+      }
+    }
+
+    logger.info(`hCaptcha iframe count: ${frameCount}, visible: ${frameVisible}`);
+
+    if (!frameVisible) {
+      logger.info('No visible hCaptcha iframe found, captcha not required. Generation should proceed normally.');
       // Wait a bit to see if the API call happens
       await page.waitForTimeout(5000);
       browser.browser()?.close();
       return null;
     }
 
-    logger.info('hCaptcha iframe found, starting captcha solving...');
+    logger.info('hCaptcha iframe is visible, starting captcha solving...');
 
     // Captcha solving loop
     new Promise<void>(async (resolve, reject) => {
