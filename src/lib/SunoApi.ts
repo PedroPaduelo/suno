@@ -362,41 +362,60 @@ class SunoApi {
     // Wait for Custom mode UI to load
     await page.waitForTimeout(1000);
 
-    logger.info('Looking for input elements...');
+    logger.info('Filling in all required fields...');
 
-    // Try multiple selectors for input field
-    const inputSelectors = [
-      'textarea',
-      '[contenteditable="true"]',
-      'input[type="text"]',
-      '[data-testid*="input"]',
-      '[class*="input"]',
-      '[class*="textarea"]',
-      '[placeholder*="lyric"]',
-      '[placeholder*="Lyric"]',
-      '[placeholder*="song"]',
-      '[placeholder*="write"]',
-    ];
+    // Fill all textareas (lyrics, style, title)
+    const textareas = await page.locator('textarea').all();
+    logger.info(`Found ${textareas.length} textareas`);
 
-    let inputElement = null;
-    for (const selector of inputSelectors) {
+    for (let i = 0; i < textareas.length; i++) {
       try {
-        const el = page.locator(selector).first();
-        await el.waitFor({ timeout: 2000 });
-        inputElement = el;
-        logger.info(`Found input with selector: ${selector}`);
-        break;
-      } catch(e) {
-        // Continue to next selector
+        const placeholder = await textareas[i].getAttribute('placeholder') || '';
+        const name = await textareas[i].getAttribute('name') || '';
+        logger.info(`Textarea ${i}: placeholder="${placeholder}", name="${name}"`);
+
+        await textareas[i].click();
+        await page.waitForTimeout(200);
+
+        if (placeholder.toLowerCase().includes('lyric') || placeholder.toLowerCase().includes('write') || name.toLowerCase().includes('lyric')) {
+          await textareas[i].fill('[Verse]\nLorem ipsum dolor sit amet\nConsectetur adipiscing elit\nSed do eiusmod tempor\n\n[Chorus]\nUt labore et dolore magna aliqua');
+          logger.info('Filled lyrics textarea');
+        } else if (placeholder.toLowerCase().includes('style') || placeholder.toLowerCase().includes('genre') || name.toLowerCase().includes('style')) {
+          await textareas[i].fill('Pop, upbeat, electronic');
+          logger.info('Filled style textarea');
+        } else if (placeholder.toLowerCase().includes('title') || name.toLowerCase().includes('title')) {
+          await textareas[i].fill('Test Song');
+          logger.info('Filled title textarea');
+        } else {
+          // Generic fill for unknown textareas
+          await textareas[i].fill('Test content');
+          logger.info(`Filled textarea ${i} with generic content`);
+        }
+        await page.waitForTimeout(300);
+      } catch(e: any) {
+        logger.info(`Error filling textarea ${i}: ${e.message}`);
       }
     }
 
-    if (inputElement) {
-      await this.click(inputElement);
-      await inputElement.pressSequentially('Lorem ipsum dolor sit amet', { delay: 80 });
-    } else {
-      logger.info('No input element found, trying to click Create button directly');
+    // Also try to fill any input fields
+    const inputs = await page.locator('input[type="text"]').all();
+    logger.info(`Found ${inputs.length} text inputs`);
+
+    for (let i = 0; i < inputs.length; i++) {
+      try {
+        const placeholder = await inputs[i].getAttribute('placeholder') || '';
+        logger.info(`Input ${i}: placeholder="${placeholder}"`);
+
+        if (placeholder.toLowerCase().includes('title')) {
+          await inputs[i].fill('Test Song');
+          logger.info('Filled title input');
+        }
+      } catch(e: any) {
+        logger.info(`Error filling input ${i}: ${e.message}`);
+      }
     }
+
+    await page.waitForTimeout(500);
 
     // Try multiple selectors for Create button
     const buttonSelectors = [
@@ -424,7 +443,21 @@ class SunoApi {
     }
 
     if (button) {
-      await this.click(button);
+      logger.info('Waiting for Create button to be enabled...');
+      // Wait for button to be enabled (max 10 seconds)
+      for (let i = 0; i < 20; i++) {
+        const isDisabled = await button.isDisabled();
+        if (!isDisabled) {
+          logger.info('Create button is now enabled');
+          break;
+        }
+        logger.info(`Button still disabled, waiting... (${i + 1}/20)`);
+        await page.waitForTimeout(500);
+      }
+
+      logger.info('Clicking Create button...');
+      await button.click({ force: true, timeout: 10000 });
+      logger.info('Create button clicked successfully');
     } else {
       // Last resort: find any visible button and log all buttons
       logger.info('No Create button found with known selectors. Looking for any button...');
@@ -438,11 +471,48 @@ class SunoApi {
     }
 
     const controller = new AbortController();
+
+    // Set up route interceptor for the token
+    let tokenResolve: (value: string | null) => void;
+    let tokenReject: (reason?: any) => void;
+    const tokenPromise = new Promise<string | null>((resolve, reject) => {
+      tokenResolve = resolve;
+      tokenReject = reject;
+    });
+
+    page.route('**/api/generate/v2/**', async (route: any) => {
+      try {
+        logger.info('hCaptcha token received. Closing browser');
+        route.abort();
+        browser.browser()?.close();
+        controller.abort();
+        const request = route.request();
+        this.currentToken = request.headers().authorization.split('Bearer ').pop();
+        tokenResolve(request.postDataJSON().token);
+      } catch(err) {
+        tokenReject(err);
+      }
+    });
+
+    // Wait for captcha to potentially appear
+    await waitForRequests(page, controller.signal);
+
+    // Check if hCaptcha iframe exists
+    const captchaFrame = page.locator('iframe[title*="hCaptcha"]');
+    const frameExists = await captchaFrame.count() > 0;
+
+    if (!frameExists) {
+      logger.info('No hCaptcha iframe found, captcha not required');
+      browser.browser()?.close();
+      return null;
+    }
+
+    // Captcha solving loop
     new Promise<void>(async (resolve, reject) => {
       const frame = page.frameLocator('iframe[title*="hCaptcha"]');
       const challenge = frame.locator('.challenge-container');
       try {
-        let wait = true;
+        let wait = false;
         while (true) {
           if (wait)
             await waitForRequests(page, controller.signal);
@@ -469,7 +539,7 @@ class SunoApi {
               else
                 throw err;
             }
-          } 
+          }
           if (drag) {
             const challengeBox = await challenge.boundingBox();
             if (challengeBox == null)
@@ -503,6 +573,7 @@ class SunoApi {
             else
               throw e;
           });
+          wait = true;
         }
       } catch(e: any) {
         if (e.message.includes('been closed') // catch error when closing the browser
@@ -515,21 +586,8 @@ class SunoApi {
       browser.browser()?.close();
       throw e;
     });
-    return (new Promise((resolve, reject) => {
-      page.route('**/api/generate/v2/**', async (route: any) => {
-        try {
-          logger.info('hCaptcha token received. Closing browser');
-          route.abort();
-          browser.browser()?.close();
-          controller.abort();
-          const request = route.request();
-          this.currentToken = request.headers().authorization.split('Bearer ').pop();
-          resolve(request.postDataJSON().token);
-        } catch(err) {
-          reject(err);
-        }
-      });
-    }));
+
+    return tokenPromise;
   }
 
   /**
