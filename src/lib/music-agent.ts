@@ -259,6 +259,126 @@ const tools = [
       required: ['prompt', 'tags', 'title'],
     },
   },
+  {
+    name: 'generate_lyrics',
+    description:
+      'Gera letras de musica a partir de uma descricao. Use quando o usuario quiser apenas criar letras sem gerar audio. Retorna letras formatadas que podem ser usadas posteriormente com generate_music.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        prompt: {
+          type: 'string',
+          description:
+            'Descricao do que a letra deve conter. Ex: "Uma musica de amor sobre saudade e reencontro" ou "Letra de rap sobre superacao e sucesso".',
+        },
+      },
+      required: ['prompt'],
+    },
+  },
+  {
+    name: 'extend_audio',
+    description:
+      'Estende/continua uma musica existente a partir de um ponto especifico. Use para criar versoes mais longas, adicionar novos versos, ou continuar uma musica de onde parou.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        audio_id: {
+          type: 'string',
+          description: 'ID da musica original que sera estendida.',
+        },
+        prompt: {
+          type: 'string',
+          description:
+            'Letra para a extensao, com meta-tags. Use callbacks como "continue with same energy" para manter consistencia.',
+        },
+        continue_at: {
+          type: 'string',
+          description:
+            'Timestamp de onde continuar no formato "mm:ss". Ex: "1:30" para continuar de 1 minuto e 30 segundos.',
+        },
+        tags: {
+          type: 'string',
+          description: 'Tags de estilo para a extensao. Deixe vazio para manter o estilo original.',
+        },
+        title: {
+          type: 'string',
+          description: 'Novo titulo para a extensao (opcional).',
+        },
+      },
+      required: ['audio_id', 'prompt'],
+    },
+  },
+  {
+    name: 'generate_stems',
+    description:
+      'Separa uma musica em stems (faixas separadas): vocais e instrumental. Util para remixes, karaoke, ou usar apenas o instrumental.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        audio_id: {
+          type: 'string',
+          description: 'ID da musica para separar em stems.',
+        },
+      },
+      required: ['audio_id'],
+    },
+  },
+  {
+    name: 'get_lyrics_alignment',
+    description:
+      'Obtem letras sincronizadas com timestamps palavra por palavra. Util para criar legendas, karaoke, ou visualizacoes sincronizadas.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        audio_id: {
+          type: 'string',
+          description: 'ID da musica para obter letras sincronizadas.',
+        },
+      },
+      required: ['audio_id'],
+    },
+  },
+  {
+    name: 'get_music_info',
+    description:
+      'Busca informacoes de uma ou mais musicas pelo ID. Retorna titulo, status, URLs de audio/video/imagem, letras, tags e mais.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        audio_ids: {
+          type: 'string',
+          description:
+            'IDs das musicas separados por virgula. Ex: "id1,id2,id3". Deixe vazio para listar todas as musicas recentes.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'get_credits',
+    description:
+      'Verifica os creditos disponiveis na conta. Retorna creditos restantes, limite mensal e uso atual.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: 'concatenate_audio',
+    description:
+      'Gera uma musica completa a partir de um clip de extensao. Use apos extend_audio para criar a versao final concatenada.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        clip_id: {
+          type: 'string',
+          description: 'ID do clip de extensao para concatenar em musica completa.',
+        },
+      },
+      required: ['clip_id'],
+    },
+  },
 ];
 
 async function callClaude(messages: Array<{ role: string; content: unknown }>): Promise<AnthropicResponse> {
@@ -343,6 +463,122 @@ async function handleToolCall(
           title: a.title,
           status: a.status,
         })),
+      });
+    }
+
+    if (toolName === 'generate_lyrics') {
+      const { prompt } = toolInput as { prompt: string };
+      const lyrics = await api.generateLyrics(prompt);
+
+      return JSON.stringify({
+        success: true,
+        message: 'Letras geradas com sucesso!',
+        lyrics,
+      });
+    }
+
+    if (toolName === 'extend_audio') {
+      const { audio_id, prompt, continue_at, tags, title } = toolInput as {
+        audio_id: string;
+        prompt: string;
+        continue_at?: string;
+        tags?: string;
+        title?: string;
+      };
+
+      const audios = await api.extendAudio(
+        audio_id,
+        prompt,
+        continue_at,
+        tags,
+        undefined, // negative_tags
+        title,
+        undefined, // model
+        false // wait_audio
+      );
+
+      return JSON.stringify({
+        success: true,
+        message: `Extensao iniciada! ${audios.length} versao(oes) sendo gerada(s).`,
+        songs: audios.map((a: AudioInfo) => ({
+          id: a.id,
+          title: a.title,
+          status: a.status,
+        })),
+      });
+    }
+
+    if (toolName === 'generate_stems') {
+      const { audio_id } = toolInput as { audio_id: string };
+      const stems = await api.generateStems(audio_id);
+
+      return JSON.stringify({
+        success: true,
+        message: 'Separacao de stems iniciada!',
+        stems: stems.map((s: AudioInfo) => ({
+          id: s.id,
+          title: s.title,
+          type: s.type,
+          status: s.status,
+        })),
+      });
+    }
+
+    if (toolName === 'get_lyrics_alignment') {
+      const { audio_id } = toolInput as { audio_id: string };
+      const alignment = await api.getLyricAlignment(audio_id);
+
+      return JSON.stringify({
+        success: true,
+        message: 'Letras sincronizadas obtidas!',
+        alignment,
+      });
+    }
+
+    if (toolName === 'get_music_info') {
+      const { audio_ids } = toolInput as { audio_ids?: string };
+      const ids = audio_ids ? audio_ids.split(',').map((id) => id.trim()) : undefined;
+      const audios = await api.get(ids);
+
+      return JSON.stringify({
+        success: true,
+        count: audios.length,
+        songs: audios.map((a: AudioInfo) => ({
+          id: a.id,
+          title: a.title,
+          status: a.status,
+          tags: a.tags,
+          duration: a.duration,
+          audio_url: a.audio_url,
+          video_url: a.video_url,
+          image_url: a.image_url,
+          created_at: a.created_at,
+        })),
+      });
+    }
+
+    if (toolName === 'get_credits') {
+      const credits = await api.get_credits();
+
+      return JSON.stringify({
+        success: true,
+        message: 'Informacoes de creditos obtidas!',
+        credits,
+      });
+    }
+
+    if (toolName === 'concatenate_audio') {
+      const { clip_id } = toolInput as { clip_id: string };
+      const audio = await api.concatenate(clip_id);
+
+      return JSON.stringify({
+        success: true,
+        message: 'Concatenacao iniciada!',
+        song: {
+          id: audio.id,
+          title: audio.title,
+          status: audio.status,
+        },
       });
     }
 
