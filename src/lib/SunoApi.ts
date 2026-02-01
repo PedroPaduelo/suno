@@ -359,86 +359,82 @@ class SunoApi {
       logger.info('Could not find Custom mode button, continuing anyway...');
     }
 
-    // Wait for Custom mode UI to load
-    await page.waitForTimeout(1000);
+    // Wait for Custom mode UI to load and page to stabilize
+    logger.info('Waiting for page to stabilize...');
+    await page.waitForTimeout(3000);
 
-    logger.info('Filling in all required fields...');
+    logger.info('Filling in required fields using specific selectors...');
 
-    // Fill all textareas (lyrics, style, title)
-    const textareas = await page.locator('textarea').all();
-    logger.info(`Found ${textareas.length} textareas`);
-
-    for (let i = 0; i < textareas.length; i++) {
-      try {
-        const placeholder = await textareas[i].getAttribute('placeholder') || '';
-        const name = await textareas[i].getAttribute('name') || '';
-        logger.info(`Textarea ${i}: placeholder="${placeholder}", name="${name}"`);
-
-        await textareas[i].click();
-        await page.waitForTimeout(200);
-
-        if (placeholder.toLowerCase().includes('lyric') || placeholder.toLowerCase().includes('write') || name.toLowerCase().includes('lyric')) {
-          await textareas[i].fill('[Verse]\nLorem ipsum dolor sit amet\nConsectetur adipiscing elit\nSed do eiusmod tempor\n\n[Chorus]\nUt labore et dolore magna aliqua');
-          logger.info('Filled lyrics textarea');
-        } else if (placeholder.toLowerCase().includes('style') || placeholder.toLowerCase().includes('genre') || name.toLowerCase().includes('style')) {
-          await textareas[i].fill('Pop, upbeat, electronic');
-          logger.info('Filled style textarea');
-        } else if (placeholder.toLowerCase().includes('title') || name.toLowerCase().includes('title')) {
-          await textareas[i].fill('Test Song');
-          logger.info('Filled title textarea');
-        } else {
-          // Generic fill for unknown textareas
-          await textareas[i].fill('Test content');
-          logger.info(`Filled textarea ${i} with generic content`);
-        }
-        await page.waitForTimeout(300);
-      } catch(e: any) {
-        logger.info(`Error filling textarea ${i}: ${e.message}`);
-      }
+    // Fill Lyrics textarea
+    try {
+      const lyricsSelector = 'textarea[placeholder*="Write some lyrics"]';
+      const lyricsTextarea = page.locator(lyricsSelector).first();
+      await lyricsTextarea.waitFor({ timeout: 5000 });
+      await lyricsTextarea.fill('[Verse]\nLorem ipsum dolor sit amet\nConsectetur adipiscing elit\nSed do eiusmod tempor\n\n[Chorus]\nUt labore et dolore magna aliqua');
+      logger.info('Filled lyrics textarea');
+    } catch(e: any) {
+      logger.info(`Error filling lyrics: ${e.message}`);
     }
 
-    // Also try to fill any input fields
-    const inputs = await page.locator('input[type="text"]').all();
-    logger.info(`Found ${inputs.length} text inputs`);
+    await page.waitForTimeout(500);
 
-    for (let i = 0; i < inputs.length; i++) {
+    // Fill Styles textarea using specific selector that works
+    try {
+      const stylesSelector = 'div.css-fm20ov.eg9z14i0 > div.css-zq13z6.eg9z14i1 > div.mb-0.pb-0 > textarea';
+      const stylesTextarea = page.locator(stylesSelector).first();
+      await stylesTextarea.waitFor({ timeout: 5000 });
+      await stylesTextarea.fill('Pop, upbeat, electronic, catchy melody');
+      logger.info('Filled styles textarea');
+    } catch(e: any) {
+      logger.info(`Error filling styles with specific selector: ${e.message}`);
+      // Fallback: try to find by placeholder content
       try {
-        const placeholder = await inputs[i].getAttribute('placeholder') || '';
-        logger.info(`Input ${i}: placeholder="${placeholder}"`);
-
-        if (placeholder.toLowerCase().includes('title')) {
-          await inputs[i].fill('Test Song');
-          logger.info('Filled title input');
+        const textareas = await page.locator('textarea').all();
+        for (const textarea of textareas) {
+          const placeholder = await textarea.getAttribute('placeholder') || '';
+          const isVisible = await textarea.isVisible();
+          if (isVisible && (placeholder.includes('drum') || placeholder.includes('soprano') || placeholder.includes('hz') || placeholder.includes('bass') || placeholder.includes('rock') || placeholder.includes('pop'))) {
+            await textarea.fill('Pop, upbeat, electronic, catchy melody');
+            logger.info('Filled styles textarea (fallback)');
+            break;
+          }
         }
-      } catch(e: any) {
-        logger.info(`Error filling input ${i}: ${e.message}`);
+      } catch(e2: any) {
+        logger.info(`Error filling styles (fallback): ${e2.message}`);
       }
     }
 
     await page.waitForTimeout(500);
 
-    // Try multiple selectors for Create button
-    const buttonSelectors = [
-      'button:has-text("Create")',
-      'button:has-text("create")',
-      'button:has-text("Generate")',
-      'button:has-text("generate")',
-      '[aria-label*="Create"]',
-      '[aria-label*="create"]',
-      '[data-testid*="create"]',
-      'button[type="submit"]',
-    ];
+    // Fill Song Title (optional but let's fill it)
+    try {
+      const titleInput = page.locator('input[placeholder*="Song Title"]').first();
+      const isVisible = await titleInput.isVisible();
+      if (isVisible) {
+        await titleInput.fill('Test Song');
+        logger.info('Filled title input');
+      }
+    } catch(e: any) {
+      logger.info(`Error filling title: ${e.message}`);
+    }
 
+    await page.waitForTimeout(500);
+
+    // Find Create button using aria-label
+    logger.info('Looking for Create button...');
     let button = null;
-    for (const selector of buttonSelectors) {
+    try {
+      button = page.locator('button[aria-label="Create song"]').first();
+      await button.waitFor({ timeout: 3000 });
+      logger.info('Found Create button with aria-label');
+    } catch(e) {
+      // Fallback to text-based selector
       try {
-        const el = page.locator(selector).first();
-        await el.waitFor({ timeout: 2000 });
-        button = el;
-        logger.info(`Found button with selector: ${selector}`);
-        break;
-      } catch(e) {
-        // Continue to next selector
+        button = page.locator('button:has-text("Create")').first();
+        await button.waitFor({ timeout: 3000 });
+        logger.info('Found Create button with text selector');
+      } catch(e2) {
+        logger.info('Could not find Create button');
       }
     }
 
@@ -494,7 +490,8 @@ class SunoApi {
       }
     });
 
-    // Wait for captcha to potentially appear
+    // Wait for captcha to potentially appear (10 seconds)
+    logger.info('Waiting to see if captcha appears...');
     await waitForRequests(page, controller.signal);
 
     // Check if hCaptcha iframe exists
@@ -502,20 +499,30 @@ class SunoApi {
     const frameExists = await captchaFrame.count() > 0;
 
     if (!frameExists) {
-      logger.info('No hCaptcha iframe found, captcha not required');
+      logger.info('No hCaptcha iframe found, captcha not required. Generation should proceed normally.');
+      // Wait a bit to see if the API call happens
+      await page.waitForTimeout(5000);
       browser.browser()?.close();
       return null;
     }
+
+    logger.info('hCaptcha iframe found, starting captcha solving...');
 
     // Captcha solving loop
     new Promise<void>(async (resolve, reject) => {
       const frame = page.frameLocator('iframe[title*="hCaptcha"]');
       const challenge = frame.locator('.challenge-container');
       try {
+        // Wait for challenge container to be visible
+        await challenge.waitFor({ timeout: 10000 });
+
         let wait = false;
         while (true) {
           if (wait)
             await waitForRequests(page, controller.signal);
+
+          // Wait for prompt text to appear
+          await challenge.locator('.prompt-text').first().waitFor({ timeout: 10000 });
           const drag = (await challenge.locator('.prompt-text').first().innerText()).toLowerCase().includes('drag');
           let captcha: any;
           for (let j = 0; j < 3; j++) { // try several times because sometimes 2Captcha could return an error
