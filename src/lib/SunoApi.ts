@@ -363,67 +363,30 @@ class SunoApi {
     logger.info('Waiting for page to stabilize...');
     await page.waitForTimeout(3000);
 
-    logger.info('Filling fields using real keyboard simulation...');
+    logger.info('Filling form fields using real keyboard simulation...');
 
-    // IMPORTANT: React detects real keyboard input, not programmatic value changes
-    // We must use page.type() which simulates actual keystrokes character by character
+    // CRITICAL: React ONLY detects real keyboard input - we use keyboard.type() with delay
 
-    // Fill Lyrics textarea with real typing
-    try {
-      const lyricsTextarea = page.locator('textarea[placeholder*="lyrics"]').first();
-      await lyricsTextarea.waitFor({ state: 'visible', timeout: 5000 });
-      await lyricsTextarea.click();
-      // Clear any existing content first
-      await lyricsTextarea.press('Control+a');
-      await lyricsTextarea.press('Backspace');
-      // Type character by character - this is what makes React detect the input!
-      await page.keyboard.type('[Verse]\nTest lyrics for CAPTCHA\n\n[Chorus]\nLa la la', { delay: 5 });
-      logger.info('Filled lyrics textarea with keyboard simulation');
-    } catch(e: any) {
-      logger.info(`Error filling lyrics: ${e.message}`);
-    }
+    // 1. Fill LYRICS textarea
+    const lyricsTextarea = page.locator('textarea[placeholder*="lyrics"]').first();
+    await lyricsTextarea.waitFor({ state: 'visible', timeout: 5000 });
+    await lyricsTextarea.click();
+    await page.keyboard.type('[Verse]\nTest lyrics for CAPTCHA trigger\n\n[Chorus]\nLa la la testing', { delay: 10 });
+    logger.info('Lyrics filled');
 
     await page.waitForTimeout(500);
 
-    // Fill Styles textarea with real typing
+    // 2. Fill STYLES textarea (second textarea that doesn't have "lyrics" in placeholder)
+    const stylesTextarea = page.locator('textarea:visible').nth(1);
     try {
-      const allTextareas = await page.locator('textarea:visible').all();
-      logger.info(`Found ${allTextareas.length} visible textareas`);
-
-      for (const textarea of allTextareas) {
-        const placeholder = await textarea.getAttribute('placeholder') || '';
-        // Skip the lyrics textarea (check for both possible placeholders)
-        if (!placeholder.toLowerCase().includes('lyrics') && !placeholder.toLowerCase().includes('prompt')) {
-          await textarea.click();
-          await textarea.press('Control+a');
-          await textarea.press('Backspace');
-          await page.keyboard.type('Pop, electronic, upbeat, 120 BPM', { delay: 5 });
-          logger.info(`Filled styles textarea (placeholder: ${placeholder.substring(0, 30)}...)`);
-          break;
-        }
-      }
+      await stylesTextarea.click();
+      await page.keyboard.type('Pop, electronic, upbeat, 120 BPM', { delay: 10 });
+      logger.info('Styles filled');
     } catch(e: any) {
-      logger.info(`Error filling styles: ${e.message}`);
+      logger.info(`Styles fill error (non-critical): ${e.message}`);
     }
 
-    await page.waitForTimeout(500);
-
-    // Fill Song Title with real typing (optional field)
-    try {
-      const titleInput = page.locator('input[placeholder*="Song Title"]').first();
-      const isVisible = await titleInput.isVisible();
-      if (isVisible) {
-        await titleInput.click();
-        await titleInput.press('Control+a');
-        await titleInput.press('Backspace');
-        await page.keyboard.type('Test Song', { delay: 10 });
-        logger.info('Filled title input with keyboard simulation');
-      }
-    } catch(e: any) {
-      logger.info(`Error filling title: ${e.message}`);
-    }
-
-    // Wait for React to process all input
+    // Wait for React to process and enable the button
     await page.waitForTimeout(1000);
 
     // Find Create button using aria-label
