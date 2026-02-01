@@ -365,12 +365,25 @@ class SunoApi {
 
     logger.info('Filling in required fields using stable selectors...');
 
+    // Helper function to fill textarea and trigger React events
+    const fillTextareaWithEvents = async (textarea: Locator, value: string) => {
+      await textarea.click();
+      await textarea.fill(''); // Clear first
+      // Use type() to simulate real typing which triggers React events
+      await textarea.type(value, { delay: 5 });
+      // Also dispatch input event to ensure React state updates
+      await textarea.evaluate((el: HTMLTextAreaElement, val: string) => {
+        el.value = val;
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      }, value);
+    };
+
     // Fill Lyrics textarea - uses stable placeholder that doesn't change
     try {
       const lyricsTextarea = page.locator('textarea[placeholder*="lyrics"]').first();
       await lyricsTextarea.waitFor({ state: 'visible', timeout: 5000 });
-      await lyricsTextarea.click();
-      await lyricsTextarea.fill('[Verse]\nLorem ipsum dolor sit amet\nConsectetur adipiscing elit\nSed do eiusmod tempor\n\n[Chorus]\nUt labore et dolore magna aliqua');
+      await fillTextareaWithEvents(lyricsTextarea, '[Verse]\nTest lyrics for CAPTCHA trigger\n\n[Chorus]\nLa la la testing');
       logger.info('Filled lyrics textarea');
     } catch(e: any) {
       logger.info(`Error filling lyrics: ${e.message}`);
@@ -386,9 +399,8 @@ class SunoApi {
       for (const textarea of allTextareas) {
         const placeholder = await textarea.getAttribute('placeholder') || '';
         // Skip the lyrics textarea
-        if (!placeholder.toLowerCase().includes('lyrics')) {
-          await textarea.click();
-          await textarea.fill('Pop, upbeat, electronic, catchy melody');
+        if (!placeholder.toLowerCase().includes('lyrics') && !placeholder.toLowerCase().includes('prompt')) {
+          await fillTextareaWithEvents(textarea, 'Pop, upbeat, electronic, 120 BPM');
           logger.info(`Filled styles textarea (placeholder: ${placeholder.substring(0, 30)}...)`);
           break;
         }
@@ -397,7 +409,7 @@ class SunoApi {
       logger.info(`Error filling styles: ${e.message}`);
     }
 
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000); // Wait longer for React to process
 
     // Fill Song Title - uses stable placeholder
     try {
@@ -405,7 +417,7 @@ class SunoApi {
       const isVisible = await titleInput.isVisible();
       if (isVisible) {
         await titleInput.click();
-        await titleInput.fill('Test Song');
+        await titleInput.type('Test Song', { delay: 10 });
         logger.info('Filled title input');
       }
     } catch(e: any) {
