@@ -57,7 +57,6 @@ export default function ManualForm({ onMusicGenerated }: ManualFormProps) {
       setSuccess(`Musica(s) criada(s) com sucesso! IDs: ${data.map((m: any) => m.id).join(', ')}`);
       onMusicGenerated();
 
-      // Clear form
       setTitle('');
       setLyrics('');
       setTags('');
@@ -71,16 +70,16 @@ export default function ManualForm({ onMusicGenerated }: ManualFormProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg shadow-lg">
-      <div className="p-4 border-b bg-gradient-to-r from-purple-600 to-pink-600">
+    <div className="flex flex-col h-full bg-gray-900/80 backdrop-blur-xl rounded-xl border border-gray-800 shadow-xl overflow-hidden">
+      <div className="p-4 border-b border-gray-800 bg-gradient-to-r from-purple-600 to-pink-600">
         <h2 className="text-xl font-bold text-white">Gerar Musica Manualmente</h2>
-        <p className="text-purple-100 text-sm">Preencha os campos abaixo</p>
+        <p className="text-purple-200 text-sm">Preencha os campos abaixo</p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Title */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-300 mb-1">
             Titulo *
           </label>
           <input
@@ -88,38 +87,38 @@ export default function ManualForm({ onMusicGenerated }: ManualFormProps) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Nome da musica"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             disabled={isLoading}
           />
         </div>
 
         {/* Tags */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-300 mb-1">
             Estilo / Tags
           </label>
           <input
             type="text"
             value={tags}
             onChange={(e) => setTags(e.target.value)}
-            placeholder="pop, rock, electronic, acoustic..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            placeholder="pop, 120 BPM, upbeat, female vocals..."
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             disabled={isLoading}
           />
-          <p className="text-xs text-gray-500 mt-1">Separe os estilos por virgula</p>
+          <p className="text-xs text-gray-500 mt-1">Ex: Genre, BPM, mood, instruments, vocal type</p>
         </div>
 
         {/* Negative Tags */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-300 mb-1">
             Tags Negativas (opcional)
           </label>
           <input
             type="text"
             value={negativeTags}
             onChange={(e) => setNegativeTags(e.target.value)}
-            placeholder="autotune, heavy metal..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            placeholder="no autotune, no heavy metal..."
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             disabled={isLoading}
           />
           <p className="text-xs text-gray-500 mt-1">Estilos que voce NAO quer</p>
@@ -132,10 +131,10 @@ export default function ManualForm({ onMusicGenerated }: ManualFormProps) {
             id="instrumental"
             checked={isInstrumental}
             onChange={(e) => setIsInstrumental(e.target.checked)}
-            className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+            className="w-4 h-4 bg-gray-800 border-gray-600 rounded focus:ring-purple-500 text-purple-600"
             disabled={isLoading}
           />
-          <label htmlFor="instrumental" className="text-sm text-gray-700">
+          <label htmlFor="instrumental" className="text-sm text-gray-300">
             Instrumental (sem letra)
           </label>
         </div>
@@ -143,26 +142,31 @@ export default function ManualForm({ onMusicGenerated }: ManualFormProps) {
         {/* Lyrics */}
         {!isInstrumental && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Letra da Musica *
             </label>
             <textarea
               value={lyrics}
               onChange={(e) => setLyrics(e.target.value)}
-              placeholder={`[Verse 1]
+              placeholder={`[Intro]
+[Mood: Uplifting]
+
+[Verse 1]
 Primeira estrofe aqui...
+(6-12 silabas por linha)
 
 [Chorus]
+[Energy: High]
 Refrao aqui...
 
-[Verse 2]
-Segunda estrofe...`}
+[Outro]
+[Fade Out]`}
               rows={10}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none font-mono text-sm"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 text-white placeholder-gray-500 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none font-mono text-sm"
               disabled={isLoading}
             />
             <p className="text-xs text-gray-500 mt-1">
-              Use [Verse], [Chorus], [Bridge], [Outro] para estruturar
+              Use meta-tags: [Verse], [Chorus], [Bridge], [Mood: X], [Energy: X]
             </p>
           </div>
         )}
@@ -174,24 +178,24 @@ Segunda estrofe...`}
             id="waitAudio"
             checked={waitAudio}
             onChange={(e) => setWaitAudio(e.target.checked)}
-            className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+            className="w-4 h-4 bg-gray-800 border-gray-600 rounded focus:ring-purple-500 text-purple-600"
             disabled={isLoading}
           />
-          <label htmlFor="waitAudio" className="text-sm text-gray-700">
+          <label htmlFor="waitAudio" className="text-sm text-gray-300">
             Aguardar geracao completa (pode demorar)
           </label>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          <div className="p-3 bg-red-900/50 border border-red-700 rounded-xl text-red-300 text-sm">
             {error}
           </div>
         )}
 
         {/* Success Message */}
         {success && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+          <div className="p-3 bg-green-900/50 border border-green-700 rounded-xl text-green-300 text-sm">
             {success}
           </div>
         )}
@@ -200,7 +204,7 @@ Segunda estrofe...`}
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-pink-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:from-purple-500 hover:to-pink-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-purple-500/20"
         >
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">

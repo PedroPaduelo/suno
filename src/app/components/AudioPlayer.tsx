@@ -61,13 +61,13 @@ export default function AudioPlayer({ src, title }: AudioPlayerProps) {
   };
 
   return (
-    <div className="bg-gray-50 rounded-lg p-3">
+    <div className="bg-gray-900/50 rounded-xl p-3 border border-gray-700">
       <audio ref={audioRef} src={src} preload="metadata" />
 
       <div className="flex items-center gap-3">
         <button
           onClick={togglePlay}
-          className="w-10 h-10 flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-colors"
+          className="w-10 h-10 flex items-center justify-center bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-full transition-all shadow-lg shadow-purple-500/30"
         >
           {isPlaying ? (
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -83,12 +83,12 @@ export default function AudioPlayer({ src, title }: AudioPlayerProps) {
 
         <div className="flex-1">
           {title && (
-            <p className="text-sm font-medium text-gray-700 truncate mb-1">
+            <p className="text-sm font-medium text-white truncate mb-1">
               {title}
             </p>
           )}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 w-10">
+            <span className="text-xs text-gray-400 w-10">
               {formatTime(currentTime)}
             </span>
             <input
@@ -97,9 +97,9 @@ export default function AudioPlayer({ src, title }: AudioPlayerProps) {
               max={duration || 0}
               value={currentTime}
               onChange={handleSeek}
-              className="flex-1 h-1 bg-gray-200 rounded-full appearance-none cursor-pointer accent-indigo-600"
+              className="flex-1 h-1 bg-gray-700 rounded-full appearance-none cursor-pointer"
             />
-            <span className="text-xs text-gray-500 w-10 text-right">
+            <span className="text-xs text-gray-400 w-10 text-right">
               {formatTime(duration)}
             </span>
           </div>

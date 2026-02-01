@@ -24,13 +24,13 @@ export default function ChatMessages({ messages, isLoading }: ChatMessagesProps)
 
   if (messages.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-500 p-8">
+      <div className="flex-1 flex items-center justify-center text-gray-400 p-8">
         <div className="text-center">
           <div className="text-6xl mb-4">🎵</div>
-          <h3 className="text-xl font-semibold mb-2">
+          <h3 className="text-xl font-semibold mb-2 text-white">
             Bem-vindo ao Suno Music Generator!
           </h3>
-          <p className="text-sm">
+          <p className="text-sm text-gray-500">
             Fale comigo para criar musicas incriveis com IA.
             <br />
             Exemplo: &quot;Crie uma musica pop animada sobre o verao&quot;
@@ -52,12 +52,12 @@ export default function ChatMessages({ messages, isLoading }: ChatMessagesProps)
           <div
             className={`max-w-[80%] rounded-2xl px-4 py-3 ${
               message.role === 'user'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-gray-100 text-gray-800'
+                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white'
+                : 'bg-gray-800 text-gray-200 border border-gray-700'
             }`}
           >
             {message.role === 'assistant' ? (
-              <div className="prose prose-sm max-w-none">
+              <div className="prose prose-sm prose-invert max-w-none">
                 <Markdown>{message.content}</Markdown>
               </div>
             ) : (
@@ -68,11 +68,11 @@ export default function ChatMessages({ messages, isLoading }: ChatMessagesProps)
       ))}
       {isLoading && (
         <div className="flex justify-start">
-          <div className="bg-gray-100 rounded-2xl px-4 py-3">
+          <div className="bg-gray-800 border border-gray-700 rounded-2xl px-4 py-3">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-2 h-2 bg-cyan-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
             </div>
           </div>
         </div>

@@ -52,7 +52,6 @@ export default function Chat({ onMusicGenerated }: ChatProps) {
 
         setMessages((prev) => [...prev, assistantMessage]);
 
-        // Notify parent if music was generated
         if (data.musicGenerated && onMusicGenerated) {
           onMusicGenerated();
         }
@@ -78,16 +77,16 @@ export default function Chat({ onMusicGenerated }: ChatProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg shadow-lg overflow-hidden">
-      <div className="bg-indigo-600 text-white px-4 py-3 flex items-center justify-between">
+    <div className="flex flex-col h-full bg-gray-900/80 backdrop-blur-xl rounded-xl border border-gray-800 shadow-xl overflow-hidden">
+      <div className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xl">🎵</span>
-          <h2 className="font-semibold">Assistente de Musica</h2>
+          <h2 className="font-semibold">Assistente de Musica IA</h2>
         </div>
         {messages.length > 0 && (
           <button
             onClick={handleNewChat}
-            className="text-sm bg-indigo-500 hover:bg-indigo-400 px-3 py-1 rounded transition-colors"
+            className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition-colors backdrop-blur"
           >
             Nova Conversa
           </button>

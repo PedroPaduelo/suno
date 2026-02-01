@@ -12,22 +12,21 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabType>('chat');
 
   const handleMusicGenerated = useCallback(() => {
-    // Trigger a refresh of the music list
     setRefreshTrigger((prev) => prev + 1);
   }, []);
 
   return (
-    <div className="w-full h-[calc(100vh-140px)] flex flex-col lg:flex-row gap-4 p-4">
+    <div className="w-full h-[calc(100vh-140px)] flex flex-col lg:flex-row gap-4 p-4 max-w-7xl mx-auto">
       {/* Left Section - Chat/Manual with Tabs */}
       <div className="lg:w-1/2 h-full min-h-[400px] flex flex-col">
         {/* Tabs */}
-        <div className="flex mb-2">
+        <div className="flex mb-2 gap-2">
           <button
             onClick={() => setActiveTab('chat')}
-            className={`flex-1 py-3 px-4 text-sm font-semibold rounded-tl-lg rounded-tr-lg transition-all ${
+            className={`flex-1 py-3 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ${
               activeTab === 'chat'
-                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg'
-                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/30'
+                : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 hover:text-gray-200 border border-gray-700'
             }`}
           >
             <span className="flex items-center justify-center gap-2">
@@ -39,10 +38,10 @@ export default function Home() {
           </button>
           <button
             onClick={() => setActiveTab('manual')}
-            className={`flex-1 py-3 px-4 text-sm font-semibold rounded-tl-lg rounded-tr-lg transition-all ${
+            className={`flex-1 py-3 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ${
               activeTab === 'manual'
-                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
-                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/30'
+                : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 hover:text-gray-200 border border-gray-700'
             }`}
           >
             <span className="flex items-center justify-center gap-2">
@@ -65,7 +64,7 @@ export default function Home() {
       </div>
 
       {/* Music List Section - Right */}
-      <div className="lg:w-1/2 h-full min-h-[400px] bg-gray-50 rounded-lg shadow-lg overflow-hidden">
+      <div className="lg:w-1/2 h-full min-h-[400px] bg-gray-900/50 backdrop-blur-xl rounded-xl border border-gray-800 shadow-xl overflow-hidden">
         <MusicList refreshTrigger={refreshTrigger} />
       </div>
     </div>
