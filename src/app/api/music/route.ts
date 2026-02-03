@@ -62,6 +62,27 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
+    // Auto-fix YouTube thumbnails that are missing
+    const youtubeWithoutThumbnails = music.filter(
+      (m) => m.source === 'youtube' && m.youtubeId && !m.imageUrl
+    );
+    if (youtubeWithoutThumbnails.length > 0) {
+      for (const m of youtubeWithoutThumbnails) {
+        await prisma.music.update({
+          where: { id: m.id },
+          data: {
+            imageUrl: `https://img.youtube.com/vi/${m.youtubeId}/hqdefault.jpg`,
+          },
+        });
+      }
+      // Re-fetch to get updated data
+      const updatedMusic = await prisma.music.findMany({
+        where: whereClause,
+        orderBy: { createdAt: 'desc' },
+      });
+      return NextResponse.json(updatedMusic);
+    }
+
     // Refresh pending music statuses (only for Suno music)
     if (refresh) {
       const pendingMusic = music.filter(
