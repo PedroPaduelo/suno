@@ -25,15 +25,48 @@ model Message {
 
 model Music {
   id        String   @id @default(cuid())
-  sunoId    String   @unique
+  sunoId    String?  @unique  // Opcional (YouTube não tem)
   title     String
   lyrics    String?  @db.Text
   tags      String?
   audioUrl  String?
   videoUrl  String?
   imageUrl  String?
-  status    String   // 'pending' | 'streaming' | 'complete' | 'error'
+  status    String   @default("complete") // 'pending' | 'streaming' | 'complete' | 'error'
   model     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Novos campos para YouTube e likes
+  source    String   @default("suno")  // "suno" | "youtube"
+  youtubeId String?  // ID do vídeo YouTube (ex: "dQw4w9WgXcQ")
+  isLiked   Boolean  @default(false)
+
+  // Relação com playlists
+  playlists PlaylistMusic[]
+}
+
+model Playlist {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  musics      PlaylistMusic[]
+}
+
+model PlaylistMusic {
+  id         String   @id @default(cuid())
+  playlistId String
+  musicId    String
+  position   Int      @default(0)
+  addedAt    DateTime @default(now())
+
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  music      Music    @relation(fields: [musicId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, musicId])
+  @@index([playlistId])
 }

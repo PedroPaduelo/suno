@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const refresh = searchParams.get('refresh') === 'true';
+    const source = searchParams.get('source'); // 'suno' | 'youtube' | 'all' | 'liked'
 
     if (id) {
       // Get specific music
@@ -18,8 +19,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Music not found' }, { status: 404 });
       }
 
-      // Optionally refresh status from Suno
-      if (refresh && music.status !== 'complete') {
+      // Optionally refresh status from Suno (only for Suno music)
+      if (refresh && music.status !== 'complete' && music.source === 'suno' && music.sunoId) {
         try {
           const api = await sunoApi();
           const audios = await api.get([music.sunoId]);
@@ -44,20 +45,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(music);
     }
 
-    // Get all music
+    // Build where clause based on source filter
+    const whereClause: { source?: string; isLiked?: boolean } = {};
+    if (source === 'suno') {
+      whereClause.source = 'suno';
+    } else if (source === 'youtube') {
+      whereClause.source = 'youtube';
+    } else if (source === 'liked') {
+      whereClause.isLiked = true;
+    }
+    // 'all' or undefined = no filter
+
+    // Get all music with optional filter
     const music = await prisma.music.findMany({
+      where: whereClause,
       orderBy: { createdAt: 'desc' },
     });
 
-    // Refresh pending music statuses
+    // Refresh pending music statuses (only for Suno music)
     if (refresh) {
       const pendingMusic = music.filter(
-        (m) => m.status !== 'complete' && m.status !== 'error'
+        (m) => m.status !== 'complete' && m.status !== 'error' && m.source === 'suno' && m.sunoId
       );
       if (pendingMusic.length > 0) {
         try {
           const api = await sunoApi();
-          const sunoIds = pendingMusic.map((m) => m.sunoId);
+          const sunoIds = pendingMusic.map((m) => m.sunoId!);
           const audios = await api.get(sunoIds);
 
           for (const audio of audios) {
@@ -74,6 +87,7 @@ export async function GET(request: NextRequest) {
 
           // Return refreshed data
           const refreshedMusic = await prisma.music.findMany({
+            where: whereClause,
             orderBy: { createdAt: 'desc' },
           });
           return NextResponse.json(refreshedMusic);
@@ -93,11 +107,69 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Helper function to extract YouTube video ID from URL
+function extractYouTubeId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+    /youtube\.com\/shorts\/([^&\n?#]+)/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { prompt, tags, title, make_instrumental } = body;
+    const { prompt, tags, title, make_instrumental, youtubeUrl } = body;
 
+    // Handle YouTube music creation
+    if (youtubeUrl) {
+      const youtubeId = extractYouTubeId(youtubeUrl);
+      if (!youtubeId) {
+        return NextResponse.json(
+          { error: 'Invalid YouTube URL' },
+          { status: 400 }
+        );
+      }
+
+      if (!title) {
+        return NextResponse.json(
+          { error: 'title is required for YouTube music' },
+          { status: 400 }
+        );
+      }
+
+      // Check if this YouTube video already exists
+      const existing = await prisma.music.findFirst({
+        where: { youtubeId },
+      });
+
+      if (existing) {
+        return NextResponse.json(
+          { error: 'This YouTube video is already in your library' },
+          { status: 400 }
+        );
+      }
+
+      const music = await prisma.music.create({
+        data: {
+          title,
+          tags: tags || null,
+          source: 'youtube',
+          youtubeId,
+          imageUrl: `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`,
+          status: 'complete',
+        },
+      });
+
+      return NextResponse.json([music]);
+    }
+
+    // Handle Suno music creation (existing logic)
     if (!prompt || !tags || !title) {
       return NextResponse.json(
         { error: 'prompt, tags, and title are required' },
@@ -129,6 +201,7 @@ export async function POST(request: NextRequest) {
           imageUrl: audio.image_url,
           status: audio.status,
           model: audio.model_name,
+          source: 'suno',
         },
       });
       savedMusic.push(music);
@@ -139,6 +212,52 @@ export async function POST(request: NextRequest) {
     console.error('Create music error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ error: 'id is required' }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const { isLiked, title, tags } = body;
+
+    const updateData: { isLiked?: boolean; title?: string; tags?: string } = {};
+
+    if (typeof isLiked === 'boolean') {
+      updateData.isLiked = isLiked;
+    }
+    if (title !== undefined) {
+      updateData.title = title;
+    }
+    if (tags !== undefined) {
+      updateData.tags = tags;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json(
+        { error: 'No valid fields to update' },
+        { status: 400 }
+      );
+    }
+
+    const music = await prisma.music.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return NextResponse.json(music);
+  } catch (error) {
+    console.error('Update music error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

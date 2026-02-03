@@ -1,10 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Music2 } from 'lucide-react';
+import { RefreshCw, Music2, LayoutGrid, List, Youtube, Plus, ListMusic } from 'lucide-react';
 import Chat from './Chat';
 import SongCard from './SongCard';
+import SongListItem from './SongListItem';
 import GlassCard from './GlassCard';
+import FilterBar from './FilterBar';
+import AddMusicModal from './AddMusicModal';
+import PlaylistSidebar from './PlaylistSidebar';
 import { usePlayer, Song } from '../context/PlayerContext';
 
 interface StudioViewProps {
@@ -12,9 +16,13 @@ interface StudioViewProps {
 }
 
 export default function StudioView({ refreshTrigger }: StudioViewProps) {
-  const { songs, setSongs } = usePlayer();
+  const { songs, setSongs, filteredSongs } = usePlayer();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isPlaylistSidebarOpen, setIsPlaylistSidebarOpen] = useState(false);
+  const [selectedMusicForPlaylist, setSelectedMusicForPlaylist] = useState<string | null>(null);
 
   const fetchMusic = useCallback(async (refresh = false) => {
     try {
@@ -72,6 +80,16 @@ export default function StudioView({ refreshTrigger }: StudioViewProps) {
     }
   };
 
+  const handleAddToPlaylist = (songId: string) => {
+    setSelectedMusicForPlaylist(songId);
+    setIsPlaylistSidebarOpen(true);
+  };
+
+  const handlePlaylistSidebarClose = () => {
+    setIsPlaylistSidebarOpen(false);
+    setSelectedMusicForPlaylist(null);
+  };
+
   return (
     <div className="w-full min-h-screen pt-24 pb-48 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
@@ -107,15 +125,67 @@ export default function StudioView({ refreshTrigger }: StudioViewProps) {
                     </div>
                   </div>
 
-                  <button
-                    onClick={handleRefresh}
-                    disabled={isRefreshing}
-                    className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5
-                             disabled:opacity-50 transition-all duration-200"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {/* Playlists Button */}
+                    <button
+                      onClick={() => setIsPlaylistSidebarOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-sm font-medium mr-1"
+                      title="Manage playlists"
+                    >
+                      <ListMusic className="w-4 h-4" />
+                    </button>
+
+                    {/* Add YouTube Button */}
+                    <button
+                      onClick={() => setIsAddModalOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors text-sm font-medium mr-2"
+                      title="Add YouTube music"
+                    >
+                      <Youtube className="w-4 h-4" />
+                      <Plus className="w-3 h-3" />
+                    </button>
+
+                    {/* View Mode Toggle */}
+                    <div className="flex items-center bg-white/5 rounded-lg p-0.5 mr-1">
+                      <button
+                        onClick={() => setViewMode('cards')}
+                        className={`p-1.5 rounded-md transition-all duration-200 ${
+                          viewMode === 'cards'
+                            ? 'bg-white/10 text-white'
+                            : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                        title="Grid view"
+                      >
+                        <LayoutGrid className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setViewMode('list')}
+                        className={`p-1.5 rounded-md transition-all duration-200 ${
+                          viewMode === 'list'
+                            ? 'bg-white/10 text-white'
+                            : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                        title="List view"
+                      >
+                        <List className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={handleRefresh}
+                      disabled={isRefreshing}
+                      className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5
+                               disabled:opacity-50 transition-all duration-200"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
                 </div>
+              </div>
+
+              {/* Filter Bar */}
+              <div className="px-4 py-3 border-b border-white/5">
+                <FilterBar />
               </div>
 
               {/* Content */}
@@ -141,19 +211,45 @@ export default function StudioView({ refreshTrigger }: StudioViewProps) {
                       </div>
                       <h3 className="text-lg font-semibold text-white mb-2">No music yet</h3>
                       <p className="text-sm text-slate-500">
-                        Chat with the AI to create your first track.
+                        Chat with the AI to create your first track, or add music from YouTube.
                       </p>
                     </div>
                   </div>
-                ) : (
+                ) : filteredSongs.length === 0 ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center max-w-sm">
+                      <div className="relative inline-block mb-6">
+                        <div className="relative w-16 h-16 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                          <Music2 className="w-8 h-8 text-slate-600" />
+                        </div>
+                      </div>
+                      <h3 className="text-lg font-semibold text-white mb-2">No matches</h3>
+                      <p className="text-sm text-slate-500">
+                        No music matches the current filter.
+                      </p>
+                    </div>
+                  </div>
+                ) : viewMode === 'cards' ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {songs.map((song: Song, index: number) => (
+                    {filteredSongs.map((song: Song, index: number) => (
                       <div
                         key={song.id}
                         className="animate-fade-in-up"
                         style={{ animationDelay: `${index * 50}ms` }}
                       >
-                        <SongCard song={song} onDelete={handleDelete} />
+                        <SongCard song={song} onDelete={handleDelete} onAddToPlaylist={handleAddToPlaylist} />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {filteredSongs.map((song: Song, index: number) => (
+                      <div
+                        key={song.id}
+                        className="animate-fade-in-up"
+                        style={{ animationDelay: `${index * 30}ms` }}
+                      >
+                        <SongListItem song={song} onDelete={handleDelete} onAddToPlaylist={handleAddToPlaylist} />
                       </div>
                     ))}
                   </div>
@@ -163,6 +259,21 @@ export default function StudioView({ refreshTrigger }: StudioViewProps) {
           </div>
         </div>
       </div>
+
+      {/* Add Music Modal */}
+      <AddMusicModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={() => fetchMusic(true)}
+      />
+
+      {/* Playlist Sidebar */}
+      <PlaylistSidebar
+        isOpen={isPlaylistSidebarOpen}
+        onClose={handlePlaylistSidebarClose}
+        selectedMusicId={selectedMusicForPlaylist}
+        onMusicAdded={() => setSelectedMusicForPlaylist(null)}
+      />
     </div>
   );
 }

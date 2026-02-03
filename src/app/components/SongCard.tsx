@@ -1,22 +1,25 @@
 'use client';
 
-import { Play, Pause, Download, Trash2 } from 'lucide-react';
+import { Play, Pause, Download, Trash2, Heart, Youtube, ListPlus } from 'lucide-react';
 import Image from 'next/image';
 import { usePlayer, Song } from '../context/PlayerContext';
 
 interface SongCardProps {
   song: Song;
   onDelete?: (id: string) => void;
+  onAddToPlaylist?: (songId: string) => void;
 }
 
-export default function SongCard({ song, onDelete }: SongCardProps) {
-  const { currentSong, isPlaying, playSong } = usePlayer();
+export default function SongCard({ song, onDelete, onAddToPlaylist }: SongCardProps) {
+  const { currentSong, isPlaying, playSong, toggleLike } = usePlayer();
 
   const isCurrentSong = currentSong?.id === song.id;
   const isCurrentPlaying = isCurrentSong && isPlaying;
-  const isReady = song.status === 'complete' && song.audioUrl;
+  const isYouTube = song.source === 'youtube';
+  const isReady = song.status === 'complete' && (song.audioUrl || isYouTube);
 
-  const handlePlay = () => {
+  const handlePlay = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (isReady) {
       playSong(song);
     }
@@ -31,26 +34,31 @@ export default function SongCard({ song, onDelete }: SongCardProps) {
     }
   };
 
+  const handleLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleLike(song.id);
+  };
+
   const getStatusBadge = () => {
     switch (song.status) {
       case 'complete':
         return null;
       case 'streaming':
         return (
-          <span className="absolute top-3 right-3 px-2.5 py-1 text-[10px] font-medium bg-cyan-500/20 text-cyan-400 rounded-full backdrop-blur-sm animate-pulse">
+          <span className="absolute bottom-3 right-3 px-2.5 py-1 text-[10px] font-medium bg-cyan-500/20 text-cyan-400 rounded-full backdrop-blur-sm animate-pulse">
             Processing...
           </span>
         );
       case 'pending':
       case 'submitted':
         return (
-          <span className="absolute top-3 right-3 px-2.5 py-1 text-[10px] font-medium bg-amber-500/20 text-amber-400 rounded-full backdrop-blur-sm animate-pulse">
+          <span className="absolute bottom-3 right-3 px-2.5 py-1 text-[10px] font-medium bg-amber-500/20 text-amber-400 rounded-full backdrop-blur-sm animate-pulse">
             Generating...
           </span>
         );
       case 'error':
         return (
-          <span className="absolute top-3 right-3 px-2.5 py-1 text-[10px] font-medium bg-red-500/20 text-red-400 rounded-full backdrop-blur-sm">
+          <span className="absolute bottom-3 right-3 px-2.5 py-1 text-[10px] font-medium bg-red-500/20 text-red-400 rounded-full backdrop-blur-sm">
             Error
           </span>
         );
@@ -91,6 +99,32 @@ export default function SongCard({ song, onDelete }: SongCardProps) {
 
         {/* Status badge */}
         {getStatusBadge()}
+
+        {/* Source badge */}
+        <div className="absolute top-3 left-3 flex items-center gap-1">
+          {isYouTube ? (
+            <span className="px-2 py-1 text-[10px] font-medium bg-red-500/20 text-red-400 rounded-full backdrop-blur-sm flex items-center gap-1">
+              <Youtube className="w-3 h-3" />
+              YouTube
+            </span>
+          ) : (
+            <span className="px-2 py-1 text-[10px] font-medium bg-purple-500/20 text-purple-400 rounded-full backdrop-blur-sm">
+              Suno
+            </span>
+          )}
+        </div>
+
+        {/* Like button */}
+        <button
+          onClick={handleLike}
+          className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-sm transition-all duration-200 z-10 ${
+            song.isLiked
+              ? 'bg-pink-500/20 text-pink-400'
+              : 'bg-black/20 text-white/60 hover:text-pink-400 hover:bg-pink-500/20'
+          }`}
+        >
+          <Heart className={`w-4 h-4 ${song.isLiked ? 'fill-current' : ''}`} />
+        </button>
 
         {/* Play button overlay */}
         {isReady && (
@@ -156,15 +190,28 @@ export default function SongCard({ song, onDelete }: SongCardProps) {
         {/* Actions */}
         {isReady && (
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleDownload}
-              className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl
-                       text-xs font-medium text-white bg-white/10 hover:bg-white/20
-                       transition-colors"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Download
-            </button>
+            {!isYouTube && (
+              <button
+                onClick={handleDownload}
+                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl
+                         text-xs font-medium text-white bg-white/10 hover:bg-white/20
+                         transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download
+              </button>
+            )}
+
+            {onAddToPlaylist && (
+              <button
+                onClick={() => onAddToPlaylist(song.id)}
+                className="p-2 rounded-xl text-slate-500 hover:text-primary hover:bg-primary/10
+                         transition-colors"
+                title="Add to playlist"
+              >
+                <ListPlus className="w-4 h-4" />
+              </button>
+            )}
 
             {onDelete && (
               <button

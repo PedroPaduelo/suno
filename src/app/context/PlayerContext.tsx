@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useRef, useCallback, useEffect, Re
 
 export interface Song {
   id: string;
-  sunoId: string;
+  sunoId?: string | null;
   title: string;
   lyrics?: string | null;
   tags?: string | null;
@@ -15,7 +15,13 @@ export interface Song {
   model?: string | null;
   createdAt: string;
   bpm?: number;
+  // Novos campos
+  source: 'suno' | 'youtube';
+  youtubeId?: string | null;
+  isLiked: boolean;
 }
+
+export type FilterType = 'all' | 'suno' | 'youtube' | 'liked';
 
 interface PlayerContextType {
   // State
@@ -26,6 +32,8 @@ interface PlayerContextType {
   duration: number;
   volume: number;
   autoPlayEnabled: boolean;
+  filter: FilterType;
+  filteredSongs: Song[];
 
   // Actions
   setSongs: (songs: Song[]) => void;
@@ -38,6 +46,9 @@ interface PlayerContextType {
   setVolume: (volume: number) => void;
   seek: (time: number) => void;
   setAutoPlay: (enabled: boolean) => void;
+  setFilter: (filter: FilterType) => void;
+  toggleLike: (songId: string) => Promise<void>;
+  updateSong: (songId: string, updates: Partial<Song>) => void;
 
   // Audio ref for external access
   audioRef: React.RefObject<HTMLAudioElement | null>;
@@ -53,8 +64,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(0.7);
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
+  const [filter, setFilterState] = useState<FilterType>('all');
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Filtered songs based on current filter
+  const filteredSongs = songs.filter(song => {
+    if (filter === 'all') return true;
+    if (filter === 'liked') return song.isLiked;
+    return song.source === filter;
+  });
 
   // Initialize audio element
   useEffect(() => {
@@ -112,6 +131,27 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const playSong = useCallback((song: Song) => {
+    // For YouTube songs, just set current song (YouTube player handles playback)
+    if (song.source === 'youtube' && song.youtubeId) {
+      // Pause any currently playing audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+
+      // If same YouTube song, just toggle play state
+      if (currentSong?.id === song.id) {
+        setIsPlaying(!isPlaying);
+        return;
+      }
+
+      setCurrentSong(song);
+      setIsPlaying(true);
+      setCurrentTime(0);
+      setDuration(0);
+      return;
+    }
+
+    // For Suno songs with audioUrl
     if (!audioRef.current || !song.audioUrl) return;
 
     // If same song, just toggle play/pause
@@ -210,6 +250,62 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setAutoPlayEnabled(enabled);
   }, []);
 
+  const setFilter = useCallback((newFilter: FilterType) => {
+    setFilterState(newFilter);
+  }, []);
+
+  const toggleLike = useCallback(async (songId: string) => {
+    const song = songs.find(s => s.id === songId);
+    if (!song) return;
+
+    const newLikedState = !song.isLiked;
+
+    // Optimistic update
+    setSongsState(prev =>
+      prev.map(s => (s.id === songId ? { ...s, isLiked: newLikedState } : s))
+    );
+
+    // Update current song if it's the one being liked
+    if (currentSong?.id === songId) {
+      setCurrentSong(prev => prev ? { ...prev, isLiked: newLikedState } : prev);
+    }
+
+    try {
+      const response = await fetch(`/api/music?id=${songId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isLiked: newLikedState }),
+      });
+
+      if (!response.ok) {
+        // Revert on error
+        setSongsState(prev =>
+          prev.map(s => (s.id === songId ? { ...s, isLiked: !newLikedState } : s))
+        );
+        if (currentSong?.id === songId) {
+          setCurrentSong(prev => prev ? { ...prev, isLiked: !newLikedState } : prev);
+        }
+      }
+    } catch {
+      // Revert on error
+      setSongsState(prev =>
+        prev.map(s => (s.id === songId ? { ...s, isLiked: !newLikedState } : s))
+      );
+      if (currentSong?.id === songId) {
+        setCurrentSong(prev => prev ? { ...prev, isLiked: !newLikedState } : prev);
+      }
+    }
+  }, [songs, currentSong]);
+
+  const updateSong = useCallback((songId: string, updates: Partial<Song>) => {
+    setSongsState(prev =>
+      prev.map(s => (s.id === songId ? { ...s, ...updates } : s))
+    );
+    if (currentSong?.id === songId) {
+      setCurrentSong(prev => prev ? { ...prev, ...updates } : prev);
+    }
+  }, [currentSong]);
+
   return (
     <PlayerContext.Provider
       value={{
@@ -220,6 +316,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         duration,
         volume,
         autoPlayEnabled,
+        filter,
+        filteredSongs,
         setSongs,
         playSong,
         togglePlay,
@@ -230,6 +328,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setVolume,
         seek,
         setAutoPlay,
+        setFilter,
+        toggleLike,
+        updateSong,
         audioRef,
       }}
     >
