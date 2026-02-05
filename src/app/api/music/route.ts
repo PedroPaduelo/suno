@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     // Get all music with optional filter
     const music = await prisma.music.findMany({
       where: whereClause,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'asc' },
     });
 
     // Auto-fix YouTube thumbnails that are missing
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
       // Re-fetch to get updated data
       const updatedMusic = await prisma.music.findMany({
         where: whereClause,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'asc' },
       });
       return NextResponse.json(updatedMusic);
     }
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
           // Return refreshed data
           const refreshedMusic = await prisma.music.findMany({
             where: whereClause,
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: 'asc' },
           });
           return NextResponse.json(refreshedMusic);
         } catch (error) {

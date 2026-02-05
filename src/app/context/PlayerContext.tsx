@@ -54,6 +54,7 @@ interface PlayerContextType {
   setSearchQuery: (query: string) => void;
   toggleLike: (songId: string) => Promise<void>;
   updateSong: (songId: string, updates: Partial<Song>) => void;
+  refreshSongs: () => Promise<void>;
 
   // Audio ref for external access
   audioRef: React.RefObject<HTMLAudioElement | null>;
@@ -536,6 +537,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [currentSong]);
 
+  const refreshSongs = useCallback(async () => {
+    try {
+      const response = await fetch('/api/music');
+      if (response.ok) {
+        const data = await response.json();
+        setSongsState(data);
+      }
+    } catch (error) {
+      console.error('Failed to refresh songs:', error);
+    }
+  }, []);
+
   return (
     <PlayerContext.Provider
       value={{
@@ -566,6 +579,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setSearchQuery,
         toggleLike,
         updateSong,
+        refreshSongs,
         audioRef,
       }}
     >

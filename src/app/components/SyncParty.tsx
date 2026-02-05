@@ -19,12 +19,36 @@ export default function SyncParty() {
     togglePlay,
     seek,
     songs,
+    refreshSongs,
   } = usePlayer();
 
   const lastSyncRef = useRef<string | null>(null);
   const isUpdatingRef = useRef(false);
+  const pendingSyncRef = useRef<{
+    musicId: string;
+    currentTime: number;
+    isPlaying: boolean;
+  } | null>(null);
 
-  const handleStateChange = useCallback((state: {
+  // Effect to handle pending sync after songs refresh
+  useEffect(() => {
+    if (pendingSyncRef.current && songs.length > 0) {
+      const { musicId, currentTime: syncTime, isPlaying: syncPlaying } = pendingSyncRef.current;
+      const song = songs.find(s => s.id === musicId);
+      if (song) {
+        playSong(song);
+        setTimeout(() => {
+          seek(syncTime);
+          if (syncPlaying !== isPlaying) {
+            togglePlay();
+          }
+        }, 500);
+        pendingSyncRef.current = null;
+      }
+    }
+  }, [songs, playSong, seek, togglePlay, isPlaying]);
+
+  const handleStateChange = useCallback(async (state: {
     currentMusicId: string | null;
     isPlaying: boolean;
     currentTime: number;
@@ -45,6 +69,15 @@ export default function SyncParty() {
         setTimeout(() => {
           seek(state.currentTime);
         }, 500);
+      } else {
+        // Song not found - refresh songs and store pending sync
+        pendingSyncRef.current = {
+          musicId: state.currentMusicId,
+          currentTime: state.currentTime,
+          isPlaying: state.isPlaying,
+        };
+        await refreshSongs();
+        return; // The effect above will handle the sync after refresh
       }
     }
 
@@ -57,7 +90,7 @@ export default function SyncParty() {
     if (Math.abs(state.currentTime - currentTime) > 3 && currentSong) {
       seek(state.currentTime);
     }
-  }, [currentSong, isPlaying, currentTime, songs, playSong, togglePlay, seek]);
+  }, [currentSong, isPlaying, currentTime, songs, playSong, togglePlay, seek, refreshSongs]);
 
   const {
     isConnected,
