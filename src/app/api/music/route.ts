@@ -145,7 +145,49 @@ function extractYouTubeId(url: string): string | null {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { prompt, tags, title, make_instrumental, youtubeUrl } = body;
+    const {
+      prompt,
+      tags,
+      title,
+      make_instrumental,
+      youtubeUrl,
+      // Direct music registration fields
+      audioUrl,
+      videoUrl,
+      imageUrl,
+      lyrics,
+      source,
+    } = body;
+
+    // Handle direct music registration (no Suno/YouTube required)
+    if (audioUrl || (source && source !== 'suno')) {
+      if (!title) {
+        return NextResponse.json(
+          { error: 'title is required' },
+          { status: 400 }
+        );
+      }
+
+      const music = await prisma.music.create({
+        data: {
+          title,
+          tags: tags || null,
+          lyrics: lyrics || null,
+          audioUrl: audioUrl || null,
+          videoUrl: videoUrl || null,
+          imageUrl: imageUrl || null,
+          source: source || 'suno',
+          status: 'complete',
+        },
+      });
+
+      // Return all songs so frontend can update
+      const allMusic = await prisma.music.findMany({
+        orderBy: { createdAt: 'asc' },
+      });
+
+      return NextResponse.json({ created: music, songs: allMusic });
+    }
 
     // Handle YouTube music creation
     if (youtubeUrl) {
@@ -187,7 +229,12 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      return NextResponse.json([music]);
+      // Return all songs so frontend can update
+      const allMusic = await prisma.music.findMany({
+        orderBy: { createdAt: 'asc' },
+      });
+
+      return NextResponse.json({ created: music, songs: allMusic });
     }
 
     // Handle Suno music creation (existing logic)
@@ -228,7 +275,12 @@ export async function POST(request: NextRequest) {
       savedMusic.push(music);
     }
 
-    return NextResponse.json(savedMusic);
+    // Return all songs so frontend can update
+    const allMusic = await prisma.music.findMany({
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return NextResponse.json({ created: savedMusic, songs: allMusic });
   } catch (error) {
     console.error('Create music error:', error);
     return NextResponse.json(
