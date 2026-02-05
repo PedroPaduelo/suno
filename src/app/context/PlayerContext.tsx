@@ -77,6 +77,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const nextAudioRef = useRef<HTMLAudioElement | null>(null);
   const crossfadeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const fadeoutIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isFadingOutRef = useRef(false);
 
   // Filtered songs based on current filter and search query
   const filteredSongs = songs.filter(song => {
@@ -125,6 +127,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
       if (crossfadeIntervalRef.current) {
         clearInterval(crossfadeIntervalRef.current);
+      }
+      if (fadeoutIntervalRef.current) {
+        clearInterval(fadeoutIntervalRef.current);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -208,6 +213,42 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     audioRef.current.play().catch(console.error);
   }, [currentSong, isPlaying]);
 
+  // Fadeout helper function
+  const performFadeout = useCallback((callback?: () => void) => {
+    if (!audioRef.current || isFadingOutRef.current) {
+      callback?.();
+      return;
+    }
+
+    // Clear any existing fadeout
+    if (fadeoutIntervalRef.current) {
+      clearInterval(fadeoutIntervalRef.current);
+    }
+
+    isFadingOutRef.current = true;
+    const audio = audioRef.current;
+    const startVolume = audio.volume;
+    const fadeSteps = crossfadeDuration * 20; // 50ms intervals
+    const volumeStep = startVolume / fadeSteps;
+    let step = 0;
+
+    fadeoutIntervalRef.current = setInterval(() => {
+      step++;
+      const newVolume = Math.max(0, startVolume - (volumeStep * step));
+      audio.volume = newVolume;
+
+      if (step >= fadeSteps) {
+        if (fadeoutIntervalRef.current) {
+          clearInterval(fadeoutIntervalRef.current);
+        }
+        audio.pause();
+        audio.volume = volume; // Restore original volume for next play
+        isFadingOutRef.current = false;
+        callback?.();
+      }
+    }, 50);
+  }, [crossfadeDuration, volume]);
+
   const togglePlay = useCallback(() => {
     // For YouTube songs, just toggle the state (PlayerBar handles YouTube player)
     if (currentSong?.source === 'youtube' && currentSong?.youtubeId) {
@@ -219,11 +260,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (!audioRef.current) return;
 
     if (isPlaying) {
-      audioRef.current.pause();
+      // Use fadeout if crossfade is enabled
+      if (crossfadeEnabled && !isFadingOutRef.current) {
+        performFadeout();
+      } else {
+        audioRef.current.pause();
+      }
     } else {
+      // Cancel any ongoing fadeout and restore volume
+      if (fadeoutIntervalRef.current) {
+        clearInterval(fadeoutIntervalRef.current);
+        isFadingOutRef.current = false;
+      }
+      audioRef.current.volume = volume;
       audioRef.current.play().catch(console.error);
     }
-  }, [isPlaying, currentSong]);
+  }, [isPlaying, currentSong, crossfadeEnabled, performFadeout, volume]);
 
   const pause = useCallback(() => {
     // For YouTube songs, just set the state (PlayerBar handles YouTube player)
@@ -231,8 +283,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setIsPlaying(false);
       return;
     }
-    audioRef.current?.pause();
-  }, [currentSong]);
+
+    if (!audioRef.current) return;
+
+    // Use fadeout if crossfade is enabled
+    if (crossfadeEnabled && !isFadingOutRef.current) {
+      performFadeout();
+    } else {
+      audioRef.current.pause();
+    }
+  }, [currentSong, crossfadeEnabled, performFadeout]);
 
   const play = useCallback(() => {
     // For YouTube songs, just set the state (PlayerBar handles YouTube player)
@@ -240,8 +300,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setIsPlaying(true);
       return;
     }
-    audioRef.current?.play().catch(console.error);
-  }, [currentSong]);
+
+    if (!audioRef.current) return;
+
+    // Cancel any ongoing fadeout and restore volume
+    if (fadeoutIntervalRef.current) {
+      clearInterval(fadeoutIntervalRef.current);
+      isFadingOutRef.current = false;
+    }
+    audioRef.current.volume = volume;
+    audioRef.current.play().catch(console.error);
+  }, [currentSong, volume]);
 
   // Crossfade transition helper
   const performCrossfade = useCallback((nextSong: Song) => {
