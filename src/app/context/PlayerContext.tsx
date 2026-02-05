@@ -171,6 +171,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [currentSong, isPlaying]);
 
   const togglePlay = useCallback(() => {
+    // For YouTube songs, just toggle the state (PlayerBar handles YouTube player)
+    if (currentSong?.source === 'youtube' && currentSong?.youtubeId) {
+      setIsPlaying(!isPlaying);
+      return;
+    }
+
+    // For Suno songs with audio element
     if (!audioRef.current) return;
 
     if (isPlaying) {
@@ -178,20 +185,34 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     } else {
       audioRef.current.play().catch(console.error);
     }
-  }, [isPlaying]);
+  }, [isPlaying, currentSong]);
 
   const pause = useCallback(() => {
+    // For YouTube songs, just set the state (PlayerBar handles YouTube player)
+    if (currentSong?.source === 'youtube' && currentSong?.youtubeId) {
+      setIsPlaying(false);
+      return;
+    }
     audioRef.current?.pause();
-  }, []);
+  }, [currentSong]);
 
   const play = useCallback(() => {
+    // For YouTube songs, just set the state (PlayerBar handles YouTube player)
+    if (currentSong?.source === 'youtube' && currentSong?.youtubeId) {
+      setIsPlaying(true);
+      return;
+    }
     audioRef.current?.play().catch(console.error);
-  }, []);
+  }, [currentSong]);
 
   const next = useCallback(() => {
     if (songs.length === 0) return;
 
-    const playableSongs = songs.filter(s => s.audioUrl && s.status === 'complete');
+    // Include both Suno songs with audioUrl and YouTube songs with youtubeId
+    const playableSongs = songs.filter(s =>
+      (s.audioUrl && s.status === 'complete') ||
+      (s.source === 'youtube' && s.youtubeId)
+    );
     if (playableSongs.length === 0) return;
 
     const currentIndex = currentSong
@@ -201,10 +222,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const nextIndex = (currentIndex + 1) % playableSongs.length;
     const nextSong = playableSongs[nextIndex];
 
-    if (nextSong && audioRef.current) {
-      setCurrentSong(nextSong);
-      audioRef.current.src = nextSong.audioUrl!;
-      audioRef.current.play().catch(console.error);
+    if (nextSong) {
+      // For YouTube songs
+      if (nextSong.source === 'youtube' && nextSong.youtubeId) {
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
+        setCurrentSong(nextSong);
+        setIsPlaying(true);
+        setCurrentTime(0);
+        setDuration(0);
+      } else if (nextSong.audioUrl && audioRef.current) {
+        // For Suno songs
+        setCurrentSong(nextSong);
+        audioRef.current.src = nextSong.audioUrl;
+        audioRef.current.play().catch(console.error);
+      }
     }
   }, [songs, currentSong]);
 
@@ -216,7 +249,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const previous = useCallback(() => {
     if (songs.length === 0) return;
 
-    const playableSongs = songs.filter(s => s.audioUrl && s.status === 'complete');
+    // Include both Suno songs with audioUrl and YouTube songs with youtubeId
+    const playableSongs = songs.filter(s =>
+      (s.audioUrl && s.status === 'complete') ||
+      (s.source === 'youtube' && s.youtubeId)
+    );
     if (playableSongs.length === 0) return;
 
     const currentIndex = currentSong
@@ -226,10 +263,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const prevIndex = currentIndex <= 0 ? playableSongs.length - 1 : currentIndex - 1;
     const prevSong = playableSongs[prevIndex];
 
-    if (prevSong && audioRef.current) {
-      setCurrentSong(prevSong);
-      audioRef.current.src = prevSong.audioUrl!;
-      audioRef.current.play().catch(console.error);
+    if (prevSong) {
+      // For YouTube songs
+      if (prevSong.source === 'youtube' && prevSong.youtubeId) {
+        if (audioRef.current) {
+          audioRef.current.pause();
+        }
+        setCurrentSong(prevSong);
+        setIsPlaying(true);
+        setCurrentTime(0);
+        setDuration(0);
+      } else if (prevSong.audioUrl && audioRef.current) {
+        // For Suno songs
+        setCurrentSong(prevSong);
+        audioRef.current.src = prevSong.audioUrl;
+        audioRef.current.play().catch(console.error);
+      }
     }
   }, [songs, currentSong]);
 
