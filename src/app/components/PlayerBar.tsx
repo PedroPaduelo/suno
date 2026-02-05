@@ -1,7 +1,7 @@
 'use client';
 
 import { usePlayer } from '../context/PlayerContext';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Disc, Youtube, ExternalLink } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Disc, Youtube, ExternalLink, AudioWaveform } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { YTPlayer } from '@/types/youtube';
@@ -13,14 +13,18 @@ export default function PlayerBar() {
     currentTime,
     duration,
     volume,
+    crossfadeEnabled,
+    crossfadeDuration,
     togglePlay,
     next,
     previous,
     setVolume,
     seek,
+    setCrossfade,
   } = usePlayer();
 
   const [showVolume, setShowVolume] = useState(false);
+  const [showCrossfade, setShowCrossfade] = useState(false);
   const [ytReady, setYtReady] = useState(false);
   const [ytCurrentTime, setYtCurrentTime] = useState(0);
   const [ytDuration, setYtDuration] = useState(0);
@@ -178,17 +182,17 @@ export default function PlayerBar() {
   if (!currentSong) return null;
 
   return (
-    <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-40 w-full max-w-xl px-4">
+    <div className="fixed bottom-16 sm:bottom-28 left-1/2 -translate-x-1/2 z-40 w-full max-w-xl px-2 sm:px-4">
       {/* Hidden YouTube player container */}
       {isYouTube && (
         <div ref={ytContainerRef} className="hidden" />
       )}
 
-      <div className="glass-liquid rounded-3xl p-4 shadow-2xl shadow-black/50 border border-white/10">
-        <div className="flex items-center gap-4">
+      <div className="glass-liquid rounded-2xl sm:rounded-3xl p-3 sm:p-4 shadow-2xl shadow-black/50 border border-white/10">
+        <div className="flex items-center gap-2 sm:gap-4">
           {/* Thumbnail */}
           <div className="relative flex-shrink-0">
-            <div className={`w-14 h-14 rounded-2xl overflow-hidden ${isPlaying && !isYouTube ? 'animate-spin-slow' : ''}`}>
+            <div className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl overflow-hidden ${isPlaying && !isYouTube ? 'animate-spin-slow' : ''}`}>
               {currentSong.imageUrl ? (
                 <Image
                   src={currentSong.imageUrl}
@@ -200,18 +204,18 @@ export default function PlayerBar() {
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-primary/50 to-pink-500/50 flex items-center justify-center">
-                  <Disc className="w-6 h-6 text-white/70" />
+                  <Disc className="w-4 h-4 sm:w-6 sm:h-6 text-white/70" />
                 </div>
               )}
               {/* YouTube indicator overlay */}
               {isYouTube && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <Youtube className="w-6 h-6 text-red-500" />
+                  <Youtube className="w-4 h-4 sm:w-6 sm:h-6 text-red-500" />
                 </div>
               )}
             </div>
             {isPlaying && (
-              <div className={`absolute -inset-1 rounded-2xl opacity-30 blur-md -z-10 animate-pulse ${
+              <div className={`absolute -inset-1 rounded-xl sm:rounded-2xl opacity-30 blur-md -z-10 animate-pulse ${
                 isYouTube ? 'bg-gradient-to-r from-red-500 via-red-600 to-red-500' : 'bg-gradient-to-r from-primary via-pink-500 to-accent'
               }`} />
             )}
@@ -219,25 +223,25 @@ export default function PlayerBar() {
 
           {/* Song info & progress */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h4 className="text-sm font-medium text-white truncate">{currentSong.title}</h4>
+            <div className="flex items-center gap-1 sm:gap-2 mb-1">
+              <h4 className="text-xs sm:text-sm font-medium text-white truncate">{currentSong.title}</h4>
               {isYouTube ? (
-                <span className="flex-shrink-0 px-2 py-0.5 text-[10px] font-medium text-red-400 bg-red-500/20 rounded-full flex items-center gap-1">
+                <span className="hidden sm:flex flex-shrink-0 px-2 py-0.5 text-[10px] font-medium text-red-400 bg-red-500/20 rounded-full items-center gap-1">
                   <Youtube className="w-3 h-3" />
                   YouTube
                 </span>
               ) : (
-                <span className="flex-shrink-0 px-2 py-0.5 text-[10px] font-mono text-cyan-400 bg-cyan-500/20 rounded-full">
+                <span className="hidden sm:block flex-shrink-0 px-2 py-0.5 text-[10px] font-mono text-cyan-400 bg-cyan-500/20 rounded-full">
                   {bpm} BPM
                 </span>
               )}
             </div>
 
             {/* Progress bar */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-slate-500 font-mono w-8">{formatTime(displayCurrentTime)}</span>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span className="text-[9px] sm:text-[10px] text-slate-500 font-mono w-6 sm:w-8">{formatTime(displayCurrentTime)}</span>
               <div
-                className="flex-1 h-1 bg-white/10 rounded-full cursor-pointer group"
+                className="flex-1 h-1 sm:h-1 bg-white/10 rounded-full cursor-pointer group"
                 onClick={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const percent = (e.clientX - rect.left) / rect.width;
@@ -257,36 +261,90 @@ export default function PlayerBar() {
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <span className="text-[10px] text-slate-500 font-mono w-8 text-right">{formatTime(displayDuration)}</span>
+              <span className="text-[9px] sm:text-[10px] text-slate-500 font-mono w-6 sm:w-8 text-right">{formatTime(displayDuration)}</span>
             </div>
           </div>
 
           {/* Controls */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0 sm:gap-1">
             <button
               onClick={previous}
-              className="p-2 text-slate-400 hover:text-white transition-colors"
+              className="hidden sm:block p-2 text-slate-400 hover:text-white transition-colors"
             >
-              <SkipBack className="w-5 h-5" />
+              <SkipBack className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
             <button
               onClick={togglePlay}
-              className="p-3 bg-white text-black rounded-full hover:scale-105 transition-transform shadow-lg"
+              className="p-2 sm:p-3 bg-white text-black rounded-full hover:scale-105 transition-transform shadow-lg"
             >
-              {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+              {isPlaying ? <Pause className="w-4 h-4 sm:w-5 sm:h-5" /> : <Play className="w-4 h-4 sm:w-5 sm:h-5 ml-0.5" />}
             </button>
 
             <button
               onClick={next}
-              className="p-2 text-slate-400 hover:text-white transition-colors"
+              className="p-1.5 sm:p-2 text-slate-400 hover:text-white transition-colors"
             >
-              <SkipForward className="w-5 h-5" />
+              <SkipForward className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
-            {/* Volume */}
+            {/* Crossfade - hidden on mobile */}
             <div
-              className="relative ml-2"
+              className="relative hidden sm:block"
+              onMouseEnter={() => setShowCrossfade(true)}
+              onMouseLeave={() => setShowCrossfade(false)}
+            >
+              <button
+                onClick={() => setCrossfade(!crossfadeEnabled)}
+                className={`p-2 transition-colors ${
+                  crossfadeEnabled
+                    ? 'text-primary'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title={crossfadeEnabled ? 'Crossfade ON' : 'Crossfade OFF'}
+              >
+                <AudioWaveform className="w-5 h-5" />
+              </button>
+
+              {showCrossfade && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-3 glass-liquid rounded-2xl min-w-[140px]">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] text-slate-400">Crossfade</span>
+                    <button
+                      onClick={() => setCrossfade(!crossfadeEnabled)}
+                      className={`w-8 h-4 rounded-full transition-colors ${
+                        crossfadeEnabled ? 'bg-primary' : 'bg-slate-600'
+                      }`}
+                    >
+                      <div className={`w-3 h-3 rounded-full bg-white transition-transform ${
+                        crossfadeEnabled ? 'translate-x-4' : 'translate-x-0.5'
+                      }`} />
+                    </button>
+                  </div>
+                  {crossfadeEnabled && (
+                    <div>
+                      <span className="text-[10px] text-slate-400">{crossfadeDuration}s</span>
+                      <input
+                        type="range"
+                        min="1"
+                        max="10"
+                        step="1"
+                        value={crossfadeDuration}
+                        onChange={(e) => setCrossfade(true, parseInt(e.target.value))}
+                        className="w-full h-1 appearance-none bg-white/20 rounded-full cursor-pointer mt-1"
+                        style={{
+                          background: `linear-gradient(to right, #6D28D9 ${(crossfadeDuration / 10) * 100}%, rgba(255,255,255,0.2) ${(crossfadeDuration / 10) * 100}%)`,
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Volume - hidden on mobile */}
+            <div
+              className="relative ml-1 sm:ml-2 hidden sm:block"
               onMouseEnter={() => setShowVolume(true)}
               onMouseLeave={() => setShowVolume(false)}
             >
@@ -315,13 +373,13 @@ export default function PlayerBar() {
               )}
             </div>
 
-            {/* Open in YouTube */}
+            {/* Open in YouTube - hidden on mobile */}
             {isYouTube && currentSong.youtubeId && (
               <a
                 href={`https://www.youtube.com/watch?v=${currentSong.youtubeId}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 text-slate-400 hover:text-red-400 transition-colors"
+                className="hidden sm:block p-2 text-slate-400 hover:text-red-400 transition-colors"
                 title="Open in YouTube"
               >
                 <ExternalLink className="w-5 h-5" />

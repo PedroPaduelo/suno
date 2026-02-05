@@ -1,5 +1,6 @@
 'use client';
 
+import { memo, useCallback, useMemo } from 'react';
 import { Play, Pause, Download, Trash2, Heart, Youtube, ListPlus } from 'lucide-react';
 import Image from 'next/image';
 import { usePlayer, Song } from '../context/PlayerContext';
@@ -10,7 +11,7 @@ interface SongListItemProps {
   onAddToPlaylist?: (songId: string) => void;
 }
 
-export default function SongListItem({ song, onDelete, onAddToPlaylist }: SongListItemProps) {
+const SongListItem = memo(function SongListItem({ song, onDelete, onAddToPlaylist }: SongListItemProps) {
   const { currentSong, isPlaying, playSong, currentTime, duration, toggleLike } = usePlayer();
 
   const isCurrentSong = currentSong?.id === song.id;
@@ -18,32 +19,40 @@ export default function SongListItem({ song, onDelete, onAddToPlaylist }: SongLi
   const isYouTube = song.source === 'youtube';
   const isReady = song.status === 'complete' && (song.audioUrl || isYouTube);
 
-  const handlePlay = () => {
-    if (isReady) {
+  const handlePlay = useCallback(() => {
+    if (song.status === 'complete' && (song.audioUrl || song.source === 'youtube')) {
       playSong(song);
     }
-  };
+  }, [playSong, song]);
 
-  const handleDownload = () => {
+  const handleDownload = useCallback(() => {
     if (song.audioUrl) {
       const link = document.createElement('a');
       link.href = song.audioUrl;
       link.download = `${song.title}.mp3`;
       link.click();
     }
-  };
+  }, [song.audioUrl, song.title]);
 
-  const handleLike = (e: React.MouseEvent) => {
+  const handleLike = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     toggleLike(song.id);
-  };
+  }, [toggleLike, song.id]);
 
-  const formatTime = (time: number) => {
+  const handleDelete = useCallback(() => {
+    onDelete?.(song.id);
+  }, [onDelete, song.id]);
+
+  const handleAddToPlaylist = useCallback(() => {
+    onAddToPlaylist?.(song.id);
+  }, [onAddToPlaylist, song.id]);
+
+  const formatTime = useCallback((time: number) => {
     if (isNaN(time) || time === 0) return '0:00';
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
+  }, []);
 
   const progress = isCurrentSong && duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -247,7 +256,7 @@ export default function SongListItem({ song, onDelete, onAddToPlaylist }: SongLi
           )}
           {onAddToPlaylist && (
             <button
-              onClick={() => onAddToPlaylist(song.id)}
+              onClick={handleAddToPlaylist}
               className="p-2 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all duration-200 opacity-0 group-hover:opacity-100"
               title="Add to playlist"
             >
@@ -256,7 +265,7 @@ export default function SongListItem({ song, onDelete, onAddToPlaylist }: SongLi
           )}
           {onDelete && (
             <button
-              onClick={() => onDelete(song.id)}
+              onClick={handleDelete}
               className="p-2 text-slate-400 hover:text-red-400 hover:bg-white/5 rounded-lg transition-all duration-200 opacity-0 group-hover:opacity-100"
               title="Delete"
             >
@@ -267,4 +276,6 @@ export default function SongListItem({ song, onDelete, onAddToPlaylist }: SongLi
       </div>
     </div>
   );
-}
+});
+
+export default SongListItem;

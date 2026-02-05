@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { usePlayer } from '../context/PlayerContext';
 
 interface Particle {
@@ -13,17 +13,23 @@ interface Particle {
   hue: number;
 }
 
+// Constants moved outside component to avoid recreation
+const PARTICLE_COUNT_PLAYING = 50; // Reduced from 70
+const PARTICLE_COUNT_IDLE = 25;    // Even fewer when not playing
+const CONNECTION_DISTANCE = 80;    // Reduced from 100
+const MAX_CONNECTIONS = 3;         // Limit connections per particle
+
 export default function CanvasVisualizer() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const animationRef = useRef<number>(0);
-  const { isPlaying, audioRef, currentSong } = usePlayer();
+  const lastFrameTime = useRef<number>(0);
+  const { isPlaying } = usePlayer();
 
-  const initParticles = useCallback((width: number, height: number) => {
+  const initParticles = useCallback((width: number, height: number, count: number) => {
     const particles: Particle[] = [];
-    const numParticles = 70;
 
-    for (let i = 0; i < numParticles; i++) {
+    for (let i = 0; i < count; i++) {
       particles.push({
         x: Math.random() * width,
         y: Math.random() * height,
@@ -31,7 +37,7 @@ export default function CanvasVisualizer() {
         vy: (Math.random() - 0.5) * 0.5,
         size: Math.random() * 2 + 1,
         opacity: Math.random() * 0.5 + 0.2,
-        hue: Math.random() * 60 + 180, // Cyan to blue range
+        hue: Math.random() * 60 + 180,
       });
     }
 
@@ -71,9 +77,19 @@ export default function CanvasVisualizer() {
     ctx.restore();
   }, [isPlaying]);
 
-  const animate = useCallback(() => {
+  const animate = useCallback((timestamp: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    // Throttle: 30fps when idle, 60fps when playing
+    const targetFPS = isPlaying ? 60 : 30;
+    const frameInterval = 1000 / targetFPS;
+
+    if (timestamp - lastFrameTime.current < frameInterval) {
+      animationRef.current = requestAnimationFrame(animate);
+      return;
+    }
+    lastFrameTime.current = timestamp;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -87,17 +103,24 @@ export default function CanvasVisualizer() {
 
     // Beat pulse effect
     const beatPulse = isPlaying
-      ? Math.abs(Math.sin(Date.now() / 100)) * 0.5 + 0.5
+      ? Math.abs(Math.sin(timestamp / 100)) * 0.5 + 0.5
       : 0.3;
 
-    // Draw waveform in background
-    drawWaveform(ctx, width, height, beatPulse);
+    // Draw waveform only when playing
+    if (isPlaying) {
+      drawWaveform(ctx, width, height, beatPulse);
+    }
 
     // Update and draw particles
     const particles = particlesRef.current;
-    const particleColor = isPlaying ? '34, 211, 238' : '100, 100, 120'; // Cyan when playing, gray when stopped
+    const particleColor = isPlaying ? '34, 211, 238' : '100, 100, 120';
 
-    particles.forEach((particle) => {
+    // Batch particle drawing
+    ctx.fillStyle = `rgba(${particleColor}, 0.5)`;
+
+    for (let i = 0; i < particles.length; i++) {
+      const particle = particles[i];
+
       // Update position
       particle.x += particle.vx * (1 + beatPulse * 0.5);
       particle.y += particle.vy * (1 + beatPulse * 0.5);
@@ -108,56 +131,63 @@ export default function CanvasVisualizer() {
       if (particle.y < 0) particle.y = height;
       if (particle.y > height) particle.y = 0;
 
-      // Add some random movement when playing
-      if (isPlaying) {
+      // Random movement only for some particles when playing
+      if (isPlaying && i % 3 === 0) {
         particle.vx += (Math.random() - 0.5) * 0.02;
         particle.vy += (Math.random() - 0.5) * 0.02;
         particle.vx = Math.max(-1, Math.min(1, particle.vx));
         particle.vy = Math.max(-1, Math.min(1, particle.vy));
       }
 
-      // Draw particle
+      // Draw particle (simplified - no individual gradients)
       ctx.beginPath();
       ctx.arc(particle.x, particle.y, particle.size * (1 + beatPulse * 0.3), 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${particleColor}, ${particle.opacity * (0.7 + beatPulse * 0.3)})`;
+      ctx.globalAlpha = particle.opacity * (0.7 + beatPulse * 0.3);
       ctx.fill();
+    }
 
-      // Draw glow
-      if (isPlaying) {
-        const gradient = ctx.createRadialGradient(
-          particle.x, particle.y, 0,
-          particle.x, particle.y, particle.size * 4
-        );
-        gradient.addColorStop(0, `rgba(${particleColor}, ${particle.opacity * 0.3})`);
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fill();
-      }
-    });
+    ctx.globalAlpha = 1;
 
-    // Draw connections between nearby particles
-    ctx.strokeStyle = `rgba(${particleColor}, 0.1)`;
-    ctx.lineWidth = 0.5;
+    // Draw connections (optimized - limit per particle, avoid sqrt)
+    if (particles.length > 1) {
+      ctx.strokeStyle = `rgba(${particleColor}, 0.1)`;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
 
-    for (let i = 0; i < particles.length; i++) {
-      for (let j = i + 1; j < particles.length; j++) {
-        const dx = particles[i].x - particles[j].x;
-        const dy = particles[i].y - particles[j].y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+      const distSqThreshold = CONNECTION_DISTANCE * CONNECTION_DISTANCE;
 
-        if (distance < 100) {
-          ctx.beginPath();
-          ctx.moveTo(particles[i].x, particles[i].y);
-          ctx.lineTo(particles[j].x, particles[j].y);
-          ctx.globalAlpha = (1 - distance / 100) * 0.3;
-          ctx.stroke();
-          ctx.globalAlpha = 1;
+      for (let i = 0; i < particles.length; i++) {
+        let connections = 0;
+        for (let j = i + 1; j < particles.length && connections < MAX_CONNECTIONS; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+
+          // Skip if too far on either axis
+          if (Math.abs(dx) > CONNECTION_DISTANCE || Math.abs(dy) > CONNECTION_DISTANCE) continue;
+
+          const distSq = dx * dx + dy * dy;
+          if (distSq < distSqThreshold) {
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            connections++;
+          }
         }
       }
+
+      ctx.stroke();
     }
 
     animationRef.current = requestAnimationFrame(animate);
   }, [isPlaying, drawWaveform]);
+
+  // Adjust particle count based on playing state
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const count = isPlaying ? PARTICLE_COUNT_PLAYING : PARTICLE_COUNT_IDLE;
+    initParticles(canvas.width, canvas.height, count);
+  }, [isPlaying, initParticles]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -166,7 +196,8 @@ export default function CanvasVisualizer() {
     const handleResize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      initParticles(canvas.width, canvas.height);
+      const count = isPlaying ? PARTICLE_COUNT_PLAYING : PARTICLE_COUNT_IDLE;
+      initParticles(canvas.width, canvas.height, count);
     };
 
     handleResize();
@@ -175,10 +206,11 @@ export default function CanvasVisualizer() {
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [initParticles]);
+  }, [initParticles, isPlaying]);
 
   useEffect(() => {
-    animationRef.current = requestAnimationFrame(animate);
+    const startAnimation = (timestamp: number) => animate(timestamp);
+    animationRef.current = requestAnimationFrame(startAnimation);
 
     return () => {
       if (animationRef.current) {

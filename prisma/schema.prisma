@@ -70,3 +70,18 @@ model PlaylistMusic {
   @@unique([playlistId, musicId])
   @@index([playlistId])
 }
+
+// Sync Party - Para sincronizar reprodução entre usuários
+model SyncSession {
+  id            String   @id @default(cuid())
+  code          String   @unique // Código da sala (ex: "ABC123")
+  hostId        String   // ID do host (quem criou)
+  currentMusicId String? // ID da música atual
+  isPlaying     Boolean  @default(false)
+  currentTime   Float    @default(0) // Tempo atual em segundos
+  lastUpdate    DateTime @default(now()) // Última atualização
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime // Expira após X horas
+
+  @@index([code])
+}

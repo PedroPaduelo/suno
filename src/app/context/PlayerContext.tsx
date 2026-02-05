@@ -32,7 +32,10 @@ interface PlayerContextType {
   duration: number;
   volume: number;
   autoPlayEnabled: boolean;
+  crossfadeEnabled: boolean;
+  crossfadeDuration: number;
   filter: FilterType;
+  searchQuery: string;
   filteredSongs: Song[];
 
   // Actions
@@ -46,7 +49,9 @@ interface PlayerContextType {
   setVolume: (volume: number) => void;
   seek: (time: number) => void;
   setAutoPlay: (enabled: boolean) => void;
+  setCrossfade: (enabled: boolean, duration?: number) => void;
   setFilter: (filter: FilterType) => void;
+  setSearchQuery: (query: string) => void;
   toggleLike: (songId: string) => Promise<void>;
   updateSong: (songId: string, updates: Partial<Song>) => void;
 
@@ -64,29 +69,62 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(0.7);
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
+  const [crossfadeEnabled, setCrossfadeEnabled] = useState(false);
+  const [crossfadeDuration, setCrossfadeDuration] = useState(3); // seconds
   const [filter, setFilterState] = useState<FilterType>('all');
+  const [searchQuery, setSearchQueryState] = useState('');
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const nextAudioRef = useRef<HTMLAudioElement | null>(null);
+  const crossfadeIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Filtered songs based on current filter
+  // Filtered songs based on current filter and search query
   const filteredSongs = songs.filter(song => {
-    if (filter === 'all') return true;
-    if (filter === 'liked') return song.isLiked;
-    return song.source === filter;
+    // First apply filter
+    let passesFilter = true;
+    if (filter === 'liked') passesFilter = song.isLiked;
+    else if (filter !== 'all') passesFilter = song.source === filter;
+
+    if (!passesFilter) return false;
+
+    // Then apply search
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      return (
+        song.title.toLowerCase().includes(query) ||
+        song.tags?.toLowerCase().includes(query)
+      );
+    }
+
+    return true;
   });
 
-  // Initialize audio element
+  // Initialize audio elements
   useEffect(() => {
-    if (typeof window !== 'undefined' && !audioRef.current) {
-      audioRef.current = new Audio();
-      audioRef.current.volume = 0.7; // Initial volume
-      audioRef.current.preload = 'auto';
+    if (typeof window !== 'undefined') {
+      if (!audioRef.current) {
+        audioRef.current = new Audio();
+        audioRef.current.volume = 0.7;
+        audioRef.current.preload = 'auto';
+      }
+      if (!nextAudioRef.current) {
+        nextAudioRef.current = new Audio();
+        nextAudioRef.current.volume = 0;
+        nextAudioRef.current.preload = 'auto';
+      }
     }
 
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
+      }
+      if (nextAudioRef.current) {
+        nextAudioRef.current.pause();
+        nextAudioRef.current = null;
+      }
+      if (crossfadeIntervalRef.current) {
+        clearInterval(crossfadeIntervalRef.current);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -205,6 +243,61 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     audioRef.current?.play().catch(console.error);
   }, [currentSong]);
 
+  // Crossfade transition helper
+  const performCrossfade = useCallback((nextSong: Song) => {
+    if (!audioRef.current || !nextAudioRef.current || !nextSong.audioUrl) return;
+
+    // Clear any existing crossfade
+    if (crossfadeIntervalRef.current) {
+      clearInterval(crossfadeIntervalRef.current);
+    }
+
+    const currentAudio = audioRef.current;
+    const nextAudio = nextAudioRef.current;
+    const targetVolume = volume;
+    const steps = crossfadeDuration * 20; // 50ms intervals
+    const volumeStep = targetVolume / steps;
+    let step = 0;
+
+    // Setup next audio
+    nextAudio.src = nextSong.audioUrl;
+    nextAudio.volume = 0;
+    nextAudio.play().catch(console.error);
+
+    // Update current song immediately for UI
+    setCurrentSong(nextSong);
+    setIsPlaying(true);
+
+    crossfadeIntervalRef.current = setInterval(() => {
+      step++;
+
+      // Fade out current
+      const currentVol = Math.max(0, targetVolume - (volumeStep * step));
+      currentAudio.volume = currentVol;
+
+      // Fade in next
+      const nextVol = Math.min(targetVolume, volumeStep * step);
+      nextAudio.volume = nextVol;
+
+      if (step >= steps) {
+        // Crossfade complete - swap audio elements
+        if (crossfadeIntervalRef.current) {
+          clearInterval(crossfadeIntervalRef.current);
+        }
+
+        currentAudio.pause();
+        currentAudio.src = nextSong.audioUrl!;
+        currentAudio.volume = targetVolume;
+        currentAudio.currentTime = nextAudio.currentTime;
+        currentAudio.play().catch(console.error);
+
+        nextAudio.pause();
+        nextAudio.volume = 0;
+        nextAudio.src = '';
+      }
+    }, 50);
+  }, [volume, crossfadeDuration]);
+
   const next = useCallback(() => {
     if (songs.length === 0) return;
 
@@ -223,7 +316,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const nextSong = playableSongs[nextIndex];
 
     if (nextSong) {
-      // For YouTube songs
+      // For YouTube songs (no crossfade support)
       if (nextSong.source === 'youtube' && nextSong.youtubeId) {
         if (audioRef.current) {
           audioRef.current.pause();
@@ -232,14 +325,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setIsPlaying(true);
         setCurrentTime(0);
         setDuration(0);
-      } else if (nextSong.audioUrl && audioRef.current) {
-        // For Suno songs
-        setCurrentSong(nextSong);
-        audioRef.current.src = nextSong.audioUrl;
-        audioRef.current.play().catch(console.error);
+      } else if (nextSong.audioUrl) {
+        // For Suno songs - use crossfade if enabled
+        if (crossfadeEnabled && currentSong?.source !== 'youtube') {
+          performCrossfade(nextSong);
+        } else if (audioRef.current) {
+          setCurrentSong(nextSong);
+          audioRef.current.src = nextSong.audioUrl;
+          audioRef.current.play().catch(console.error);
+        }
       }
     }
-  }, [songs, currentSong]);
+  }, [songs, currentSong, crossfadeEnabled, performCrossfade]);
 
   // Update nextRef when next changes
   useEffect(() => {
@@ -264,7 +361,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const prevSong = playableSongs[prevIndex];
 
     if (prevSong) {
-      // For YouTube songs
+      // For YouTube songs (no crossfade support)
       if (prevSong.source === 'youtube' && prevSong.youtubeId) {
         if (audioRef.current) {
           audioRef.current.pause();
@@ -273,14 +370,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setIsPlaying(true);
         setCurrentTime(0);
         setDuration(0);
-      } else if (prevSong.audioUrl && audioRef.current) {
-        // For Suno songs
-        setCurrentSong(prevSong);
-        audioRef.current.src = prevSong.audioUrl;
-        audioRef.current.play().catch(console.error);
+      } else if (prevSong.audioUrl) {
+        // For Suno songs - use crossfade if enabled
+        if (crossfadeEnabled && currentSong?.source !== 'youtube') {
+          performCrossfade(prevSong);
+        } else if (audioRef.current) {
+          setCurrentSong(prevSong);
+          audioRef.current.src = prevSong.audioUrl;
+          audioRef.current.play().catch(console.error);
+        }
       }
     }
-  }, [songs, currentSong]);
+  }, [songs, currentSong, crossfadeEnabled, performCrossfade]);
 
   const setVolume = useCallback((newVolume: number) => {
     setVolumeState(newVolume);
@@ -299,8 +400,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setAutoPlayEnabled(enabled);
   }, []);
 
+  const setCrossfade = useCallback((enabled: boolean, duration?: number) => {
+    setCrossfadeEnabled(enabled);
+    if (duration !== undefined) {
+      setCrossfadeDuration(duration);
+    }
+  }, []);
+
   const setFilter = useCallback((newFilter: FilterType) => {
     setFilterState(newFilter);
+  }, []);
+
+  const setSearchQuery = useCallback((query: string) => {
+    setSearchQueryState(query);
   }, []);
 
   const toggleLike = useCallback(async (songId: string) => {
@@ -365,7 +477,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         duration,
         volume,
         autoPlayEnabled,
+        crossfadeEnabled,
+        crossfadeDuration,
         filter,
+        searchQuery,
         filteredSongs,
         setSongs,
         playSong,
@@ -377,7 +492,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         setVolume,
         seek,
         setAutoPlay,
+        setCrossfade,
         setFilter,
+        setSearchQuery,
         toggleLike,
         updateSong,
         audioRef,

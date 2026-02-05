@@ -10,6 +10,14 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+};
+
 export const metadata: Metadata = {
   title: "AETHER OS | AI Music Generation",
   description: "Create incredible music with AI. AETHER OS is the next generation of AI-powered music creation.",

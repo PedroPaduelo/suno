@@ -6,6 +6,7 @@ import FloatingDock, { ViewMode } from './components/FloatingDock';
 import PlayerBar from './components/PlayerBar';
 import StudioView from './components/StudioView';
 import DJDeckView from './components/DJDeckView';
+import SyncParty from './components/SyncParty';
 
 export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>('studio');
@@ -39,6 +40,9 @@ export default function Home() {
 
       {/* Player Bar (z-40) - Persistent player */}
       <PlayerBar />
+
+      {/* Sync Party Button (z-30) */}
+      <SyncParty />
 
       {/* Navigation Dock (z-50) - Floating navigation */}
       <FloatingDock currentView={viewMode} onViewChange={setViewMode} />
