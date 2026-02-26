@@ -1,0 +1,54 @@
+   ▲ Next.js 14.1.4
+   - Local:        http://localhost:3001
+
+ ✓ Ready in 383ms
+Get music error: PrismaClientInitializationError: 
+Invalid `prisma.music.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "postgresql"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at $n.handleRequestError (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/@prisma/client/runtime/library.js:121:7615)
+    at $n.handleAndLogRequestError (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/@prisma/client/runtime/library.js:121:6623)
+    at $n.request (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/@prisma/client/runtime/library.js:121:6307)
+    at async l (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/@prisma/client/runtime/library.js:130:9633)
+    at async GET (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/.next/server/app/api/music/route.js:265:23)
+    at async /workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:42484
+    at async eI.execute (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:32486)
+    at async eI.handle (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:43737)
+    at async doRender (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/next/dist/server/base-server.js:1317:42)
+    at async cacheEntry.responseCache.get.routeKind (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/next/dist/server/base-server.js:1539:28) {
+  clientVersion: '5.22.0',
+  errorCode: undefined
+}
+Get music error: PrismaClientInitializationError: 
+Invalid `prisma.music.findMany()` invocation:
+
+
+error: Environment variable not found: DATABASE_URL.
+  -->  schema.prisma:7
+   | 
+ 6 |   provider = "postgresql"
+ 7 |   url      = env("DATABASE_URL")
+   | 
+
+Validation Error Count: 1
+    at $n.handleRequestError (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/@prisma/client/runtime/library.js:121:7615)
+    at $n.handleAndLogRequestError (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/@prisma/client/runtime/library.js:121:6623)
+    at $n.request (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/@prisma/client/runtime/library.js:121:6307)
+    at async l (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/@prisma/client/runtime/library.js:130:9633)
+    at async GET (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/.next/server/app/api/music/route.js:265:23)
+    at async /workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:42484
+    at async eI.execute (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:32486)
+    at async eI.handle (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:6:43737)
+    at async doRender (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/next/dist/server/base-server.js:1317:42)
+    at async cacheEntry.responseCache.get.routeKind (/workspace/temp-orquestrador/users/5aaf347f-952f-4355-8513-ac3f4024b43e/projetos/suno/node_modules/next/dist/server/base-server.js:1539:28) {
+  clientVersion: '5.22.0',
+  errorCode: undefined
+}

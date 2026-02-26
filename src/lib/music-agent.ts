@@ -382,8 +382,8 @@ const tools = [
 ];
 
 async function callClaude(messages: Array<{ role: string; content: unknown }>): Promise<AnthropicResponse> {
-  const baseUrl = 'https://api.z.ai/api/anthropic';
-  const apiKey = 'a1b0ec2671f246ad8cccc3440e2cbf89.axlWCIyrWxp5fIPW';
+  const baseUrl = process.env.ANTHROPIC_BASE_URL || 'https://api.z.ai/api/anthropic';
+  const apiKey = process.env.ANTHROPIC_AUTH_TOKEN || '';
 
   console.log('Calling Claude API:', baseUrl);
 
